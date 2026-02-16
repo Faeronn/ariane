@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
 });
 
 //TODO : Use a code instead ! Waste of ram jesus christ
-async function sendVerificationEmail(to, link) {
+async function sendVerificationEmail(to, verificationCode) {
 	const mailOptions = {
 		from: process.env.MAIL_USER,
 		to: to,
@@ -26,9 +26,10 @@ async function sendVerificationEmail(to, link) {
 			<div class="email-body" style="background-color:#ffffff; color: black; padding: 20px; width: 600px; text-align: center;">
 				<p>Bonjour,</p>
 				<p>Merci de votre inscription à notre service. Nous sommes ravis de vous compter parmis nous.</p>
-				<p>Pour compléter votre inscription, veuillez cliquer sur le lien ci-dessous pour vérifier votre adresse e-mail :</p>
-				<a href="${API_URL + link}" style="display: inline-block; background-color: #009ab1; color: white; padding: 10px 20px; margin: 20px 0; text-decoration: none;">Vérifier mon adresse e-mail</a>
-				<p>Si vous n'avez pas demandé cette inscription, veuillez ignorer cet e-mail.</p>
+				<p>Pour compléter votre inscription, veuillez saisir le code de vérification ci-dessous dans l’application</p>
+				<div style="font-size:32px; font-weight:bold; letter-spacing:6px; margin:20px 0; color:#009ab1;">${verificationCode}</div>
+				<p>Ce code est valable pendant quelques minutes.</p>
+				<p>Si vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet e-mail.</p>
 			</div>
 			<div style="width: 100%; padding: 20px 0px; color: black; text-align: center;">
 				<p style="margin: 0;">© Artemis-RD. Tous droits reservés.</p>

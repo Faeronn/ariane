@@ -50,7 +50,7 @@ router.post('/signup', async (req, res) => {
 		const signupQuery = await db.query('INSERT INTO users (username, password, firstname, lastname) VALUES (?, ?, ?, ?);', [username, hashedPassword, firstname, lastname]);
 		if (!(signupQuery.affectedRows > 0)) return res.status(500).send({ message: 'Error : Unable to create User.' });
 
-		const verificationCode = generateVerificationNumber();
+		const verificationCode = Array.from(crypto.getRandomValues(new Uint8Array(6)), x => x % 10).join('');
 		const timeZoneOffset = new Date().getTimezoneOffset() * 60000;
 		const rawExpiryDate = new Date((Date.now() - timeZoneOffset) + 3600000).toISOString();
 		const expiryDate = rawExpiryDate.replace('T', ' ').substring(0, 19);
@@ -64,23 +64,20 @@ router.post('/signup', async (req, res) => {
 	}
 });
 
-//TODO : Get rid of this shit show, replace by post & use a code instead of a link => see mailer.js
-router.get('/verify/:code', async (req, res) => {
-	const verificationCode = sanitizeInput(req.params.code);
+router.post('/verify/:code', async (req, res) => {
+	const verificationCode = String(sanitizeInput(req.params.code) ?? '').trim();
 	if (!verificationCode) return res.status(400).send({ message: 'Error : Missing information.' });
-	if (!isVerificationNumberValid(verificationCode)) return res.status(400).send({ message: 'Error : Invalid verificationCode.' });
+	if (!/^\d{6}$/.test(verificationCode)) return res.status(400).send({ message: 'Error : Invalid verificationCode.' });
 
 	try {
 		const result = await db.query('SELECT * FROM verifications WHERE verificationCode = ?', [verificationCode]);
-		
-		if (result.length > 0) {
-			await db.query('UPDATE users SET isVerified = 1 WHERE userID = ?', [result[0].userID]);
-			await db.query('DELETE FROM verifications WHERE verificationCode = ?', [verificationCode]);
-			return res.status(200).send({ message: 'Valid verificationId.'});
-		}
-		else res.status(404).send({ message: 'Error : Invalid verificationCode.' });
+		if(result.length === 0) return res.status(404).send({ message: 'Error : Invalid verificationCode.' });
+
+		await db.query('UPDATE users SET isVerified = 1 WHERE userID = ?', [result[0].userID]);
+		await db.query('DELETE FROM verifications WHERE verificationCode = ?', [verificationCode]);
+		return res.status(200).send({ message: 'Valid verificationId.'});
 	} catch (err) {
-		return res.status(500).send({ message: 'Error : Unable to verify email.'});
+		return res.status(500).send({ message: 'Error : Unable to verify email address.' + err});
 	}
 });
 
@@ -89,34 +86,8 @@ router.post('/refresh', async (req, res) => {
 	return res.status(500).send({ message: 'Error : Endpoint not yet implemented.'});
 });
 
-
-function generateVerificationNumber() {
-	let key = '';
-	const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-
-	for (let i = 0; i < 20; i++) {
-		if (i > 0 && i % 5 === 0) key += '-';
-		key += chars.charAt(Math.floor(Math.random() * chars.length));
-	}
-
-	return key;
-}
-
-async function getUserDetails(username) {
-	const userDetailsQuery = await db.query('SELECT * FROM users WHERE username = ?', [username]);
-	if (!(userDetailsQuery.length > 0)) return {};
-
-	return userDetailsQuery[0];
-}
-
 function isUsernameValid(username) {
-	const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,5}$/;
-	return regex.test(username);
-}
-
-function isVerificationNumberValid(verificationCode) {
-	const regex = /^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/;
-	return regex.test(verificationCode);
+	return /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,5}$/.test(username);
 }
 
 module.exports = router;
