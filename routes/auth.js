@@ -1,6 +1,6 @@
 const { sendVerificationEmail } = require('../utils/mailer');
 const sanitizeInput = require('../utils/sanitizer');
-const { generateAccessToken } = require('../utils/jwt');
+const { generateAccessToken, generateRefreshToken, hashToken } = require('../utils/jwt');
 const db = require('../utils/database');
 const express = require('express');
 const bcrypt = require('bcrypt');
@@ -10,21 +10,22 @@ router.post('/signin', async (req, res) => {
 	const username = sanitizeInput(req.body.username);
 	const password = sanitizeInput(req.body.password);
 	if (!username || !password) return res.status(400).send({ message: 'Error : Missing credentials.' });
-	//TODO : Add refreshToken
-	try {
-		const hashedPassword = await db.getHashedPasswordForUser(username);
-		const bcryptResult = await bcrypt.compare(password, hashedPassword);
-		if (!bcryptResult) return res.status(401).send({ message: 'Invalid credentials!' });
 
-		const verifiedQuery = await db.query('SELECT isVerified FROM users WHERE username = ?', [username]);
-		if (!(verifiedQuery.length > 0)) return res.status(401).send({ message: 'You must verify email !' });
-		if (!(verifiedQuery[0].isVerified === 1)) return res.status(401).send({ message: 'You must verify email !' });
+	try {
+		const users = await db.query('SELECT * FROM users WHERE username = ?', [username]);
+    	if (!(users.length > 0)) return res.status(401).send({ message: 'Invalid credentials!' });
+
+		const user = users[0];
+		const bcryptResult = await bcrypt.compare(password, user.password);
+		if (!bcryptResult) return res.status(401).send({ message: 'Invalid credentials!' });
+		if (!(user.isVerified === 1)) return res.status(401).send({ message: 'You must verify email !' });
 
 		const token = generateAccessToken({ username });
-		const userDetails = await getUserDetails(username);
-		const timeZoneOffset = new Date().getTimezoneOffset() * 60000;
-		const expiryDate = new Date((Date.now() - timeZoneOffset) + 3600000).toISOString();
-		return res.status(200).send({ message: 'Login successful!', token: token, user: userDetails, expiryDate: expiryDate });
+		const refreshToken = generateRefreshToken();
+   		const refreshHash = hashToken(refreshToken);
+		await db.query('INSERT INTO refresh_token (userID, tokenHash, expiresAt, createdAt) VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), UTC_TIMESTAMP())', [user.userID, refreshHash]);
+
+		return res.status(200).send({ message: 'Login successful!', accesstoken: token, refreshToken: refreshToken, user: {userID: user.userID, username: user.username, firstname: user.firstname, lastname: user.lastname}, expiresIn: 3600 });
 	} catch(error) {
 		return res.status(500).send({ message: 'Error : ' + error });
 	}
@@ -53,11 +54,11 @@ router.post('/signup', async (req, res) => {
 		const timeZoneOffset = new Date().getTimezoneOffset() * 60000;
 		const rawExpiryDate = new Date((Date.now() - timeZoneOffset) + 3600000).toISOString();
 		const expiryDate = rawExpiryDate.replace('T', ' ').substring(0, 19);
-		const verificationQuery = await db.query('INSERT INTO verifications (userId, verificationCode) VALUES (?, ?);', [signupQuery.insertId, verificationCode]);
+		const verificationQuery = await db.query('INSERT INTO verifications (userID, verificationCode) VALUES (?, ?);', [signupQuery.insertId, verificationCode]);
 		
 		if (!(verificationQuery.affectedRows > 0)) return res.status(500).send({ message: 'Error : Unable to setup Verification.' });
 		sendVerificationEmail(username, verificationCode);
-		return res.status(200).send({ message: 'User created successfully.', user: {userId : signupQuery.insertId.toString(), userlogin : username } });
+		return res.status(200).send({ message: 'User created successfully.', user: {userID : signupQuery.insertId.toString(), userlogin : username } });
 	} catch(error) {
 		return res.status(500).send({ message: 'Error : ' + error });
 	}
@@ -73,7 +74,7 @@ router.get('/verify/:code', async (req, res) => {
 		const result = await db.query('SELECT * FROM verifications WHERE verificationCode = ?', [verificationCode]);
 		
 		if (result.length > 0) {
-			await db.query('UPDATE users SET isVerified = 1 WHERE userId = ?', [result[0].userId]);
+			await db.query('UPDATE users SET isVerified = 1 WHERE userID = ?', [result[0].userID]);
 			await db.query('DELETE FROM verifications WHERE verificationCode = ?', [verificationCode]);
 			return res.status(200).send({ message: 'Valid verificationId.'});
 		}
