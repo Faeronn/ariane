@@ -82,9 +82,30 @@ router.post('/verify/:code', async (req, res) => {
 });
 
 router.post('/refresh', async (req, res) => {
-	//TODO : {refreshToken} ⇒ {accessToken}
-	return res.status(500).send({ message: 'Error : Endpoint not yet implemented.'});
+	const refreshToken = String(sanitizeInput(req.body.refreshToken) ?? '').trim();
+	if (!refreshToken) return res.status(400).send({ message: 'Error : Missing information.' });
+
+	try {
+		const tokenHash = hashToken(refreshToken);
+		const rows = await db.query(`SELECT rt.userID, u.username, u.isVerified FROM refresh_token rt INNER JOIN users u ON u.userID = rt.userID WHERE rt.tokenHash = ? AND rt.expiresAt > UTC_TIMESTAMP() LIMIT 1`, [tokenHash]);
+		if (rows.length === 0) return res.status(401).send({ message: 'Error : Unable to refresh token.' });
+
+		const { userID, username, isVerified } = rows[0];
+		if (isVerified !== 1) return res.status(401).send({ message: 'Error : Unable to refresh token.' });
+
+		const newRefreshToken = generateRefreshToken();
+		const newRefreshHash = hashToken(newRefreshToken);
+
+		await db.query('DELETE FROM refresh_token WHERE tokenHash = ?', [tokenHash]);
+		await db.query(`INSERT INTO refresh_token (userID, tokenHash, expiresAt, createdAt) VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), UTC_TIMESTAMP())`, [userID, newRefreshHash] );
+
+		const accessToken = generateAccessToken({ username });
+		return res.status(200).send({ message: 'Token refreshed!', accesstoken: accessToken, refreshToken: newRefreshToken, expiresIn: 3600 });
+	} catch (error) {
+		return res.status(500).send({ message: 'Error : Unable to refresh token.' });
+	}
 });
+
 
 function isUsernameValid(username) {
 	return /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,5}$/.test(username);

@@ -20,20 +20,4 @@ async function query(sql, values) {
 	}
 }
 
-async function getHashedPasswordForUser(username) {
-	try {
-		const result = await query('SELECT password FROM users WHERE username=?', [username]);
-		
-		if (result.length > 0) return result[0].password;
-		else return '';
-	} catch (error) {
-		console.error('Error in getHashedPasswordForUser:', error);
-		throw error;
-	}
-}
-
-
-module.exports = {
-	query,
-	getHashedPasswordForUser
-};
+module.exports = { query };
