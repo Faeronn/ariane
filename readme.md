@@ -2,9 +2,9 @@
 Outil d’inventaire logiciel et de suivi de vulnérabilités (CVE) pour machines Linux & Windows.
 
 ## ✨ Fonctionnalités
+- 🔐 Authentification JWT + Refresh Token
+- 📧 Vérification d’email à l’inscription
 - 🖥️ [ W.I.P ] Gestion d’une flotte de machines
-- 🔐 [ W.I.P ] Authentification JWT + Refresh Token
-- 📧 [ W.I.P ] Vérification d’email à l’inscription
 - 🧠 [ W.I.P ] Normalisation logiciel → CPE → CVE
 - 🚨 [ W.I.P ] Détection des vulnérabilités par version installée
 - 📊 [ W.I.P ] API REST prête pour dashboard
