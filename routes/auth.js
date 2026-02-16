@@ -13,12 +13,12 @@ router.post('/signin', async (req, res) => {
 
 	try {
 		const users = await db.query('SELECT * FROM users WHERE username = ?', [username]);
-    	if (!(users.length > 0)) return res.status(401).send({ message: 'Invalid credentials!' });
+    	if (!(users.length > 0)) return res.status(401).send({ message: 'Error : Unable to sign in.' });
 
 		const user = users[0];
 		const bcryptResult = await bcrypt.compare(password, user.password);
-		if (!bcryptResult) return res.status(401).send({ message: 'Invalid credentials!' });
-		if (!(user.isVerified === 1)) return res.status(401).send({ message: 'You must verify email !' });
+		if (!bcryptResult) return res.status(401).send({ message: 'Error : Unable to sign in.' });
+		if (!(user.isVerified === 1)) return res.status(401).send({ message: 'Error : Unable to sign in.' });
 
 		const token = generateAccessToken({ username });
 		const refreshToken = generateRefreshToken();
@@ -27,7 +27,7 @@ router.post('/signin', async (req, res) => {
 
 		return res.status(200).send({ message: 'Login successful!', accesstoken: token, refreshToken: refreshToken, user: {userID: user.userID, username: user.username, firstname: user.firstname, lastname: user.lastname}, expiresIn: 3600 });
 	} catch(error) {
-		return res.status(500).send({ message: 'Error : ' + error });
+		return res.status(500).send({ message: 'Error : Unable to sign in.' });
 	}
 });
 
@@ -60,7 +60,7 @@ router.post('/signup', async (req, res) => {
 		sendVerificationEmail(username, verificationCode);
 		return res.status(200).send({ message: 'User created successfully.', user: {userID : signupQuery.insertId.toString(), userlogin : username } });
 	} catch(error) {
-		return res.status(500).send({ message: 'Error : ' + error });
+		return res.status(500).send({ message: 'Error : Unable to signup User.'});
 	}
 });
 
@@ -77,7 +77,7 @@ router.post('/verify/:code', async (req, res) => {
 		await db.query('DELETE FROM verifications WHERE verificationCode = ?', [verificationCode]);
 		return res.status(200).send({ message: 'Valid verificationId.'});
 	} catch (err) {
-		return res.status(500).send({ message: 'Error : Unable to verify email address.' + err});
+		return res.status(500).send({ message: 'Error : Unable to verify email address.'});
 	}
 });
 
