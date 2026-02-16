@@ -1,0 +1,26 @@
+{
+	"name": "ariane",
+	"version": "0.0.1",
+	"description": "Vulnerability & Software Inventory Tracker",
+	"license": "ISC",
+	"author": "Faeronn",
+	"type": "commonjs",
+	"main": "main.js",
+	"scripts": {
+		"dev": "nodemon main.js",
+		"test": "echo \"Error: testing is when you fear something\" && exit 1"
+	},
+	"dependencies": {
+		"bcrypt": "^6.0.0",
+		"body-parser": "^2.2.2",
+		"cors": "^2.8.6",
+		"dotenv": "^17.3.1",
+		"express": "^5.2.1",
+		"jsonwebtoken": "^9.0.3",
+		"mariadb": "^3.4.5",
+		"nodemailer": "^8.0.1"
+	},
+	"devDependencies": {
+		"nodemon": "^3.1.11"
+	}
+}
