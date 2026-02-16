@@ -83,7 +83,7 @@ npm run dev
 | POST    | /auth/refresh   | Nouveau access token |
 | POST    | /auth/logout    | Révocation refresh   |
 
-#### 🖥️ Inventaire
+#### 🖥️ Inventaire [W.I.P]
 
 | Méthode | Route                 | Description                  |
 |---------|-----------------------|------------------------------|
