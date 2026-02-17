@@ -11,7 +11,7 @@
  Target Server Version : 110400
  File Encoding         : 65001
 
- Date: 17/02/2026 14:51:34
+ Date: 17/02/2026 15:38:48
 */
 
 SET NAMES utf8mb4;
@@ -68,6 +68,7 @@ CREATE TABLE `verifications`  (
   `verificationID` int NOT NULL AUTO_INCREMENT,
   `userID` int NULL DEFAULT NULL,
   `verificationCode` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
+  `expiryDate` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`verificationID`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
 

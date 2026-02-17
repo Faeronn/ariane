@@ -29,7 +29,7 @@ router.post('/signin', async (req, res) => {
 		await db.query('INSERT INTO refresh_token (userID, tokenHash, expiresAt, createdAt) VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), UTC_TIMESTAMP())', [user.userID, refreshHash]);
 
 		return res.status(200).send({ message: 'Login successful!', accesstoken: token, refreshToken: refreshToken, user: {userID: user.userID, username: user.username, firstname: user.firstname, lastname: user.lastname}, expiresIn: 3600 });
-	} catch(error) {
+	} catch { // TODO : catch the error & log it
 		return res.status(500).send({ message: 'Error : Unable to sign in.' });
 	}
 });
@@ -56,13 +56,13 @@ router.post('/signup', async (req, res) => {
 		const verificationCode = Array.from(crypto.getRandomValues(new Uint8Array(6)), x => x % 10).join('');
 		const timeZoneOffset = new Date().getTimezoneOffset() * 60000;
 		const rawExpiryDate = new Date((Date.now() - timeZoneOffset) + 3600000).toISOString();
-		const expiryDate = rawExpiryDate.replace('T', ' ').substring(0, 19); //TODO : Use it
-		const verificationQuery = await db.query('INSERT INTO verifications (userID, verificationCode) VALUES (?, ?);', [signupQuery.insertId, verificationCode]);
+		const expiryDate = rawExpiryDate.replace('T', ' ').substring(0, 19);
+		const verificationQuery = await db.query('INSERT INTO verifications (userID, verificationCode, expiryDate) VALUES (?, ?, ?);', [signupQuery.insertId, verificationCode, expiryDate]);
 		
 		if (!(verificationQuery.affectedRows > 0)) return res.status(500).send({ message: 'Error : Unable to setup Verification.' });
 		sendVerificationEmail(username, verificationCode);
 		return res.status(200).send({ message: 'User created successfully.', user: {userID : signupQuery.insertId.toString(), userlogin : username } });
-	} catch(error) {
+	} catch { // TODO : catch the error & log it
 		return res.status(500).send({ message: 'Error : Unable to signup User.'});
 	}
 });
@@ -80,7 +80,7 @@ router.post('/verify/:code', async (req, res) => {
 		await db.query('UPDATE users SET isVerified = 1 WHERE userID = ?', [result[0].userID]);
 		await db.query('DELETE FROM verifications WHERE verificationCode = ?', [verificationCode]);
 		return res.status(200).send({ message: 'Valid verificationId.'});
-	} catch (err) {
+	} catch { // TODO : catch the error & log it
 		return res.status(500).send({ message: 'Error : Unable to verify email address.'});
 	}
 });
@@ -105,7 +105,7 @@ router.post('/refresh', async (req, res) => {
 
 		const accessToken = generateAccessToken({ username });
 		return res.status(200).send({ message: 'Token refreshed!', accesstoken: accessToken, refreshToken: newRefreshToken, expiresIn: 3600 });
-	} catch (error) {
+	} catch { // TODO : catch the error & log it
 		return res.status(500).send({ message: 'Error : Unable to refresh token.' });
 	}
 });
@@ -119,7 +119,7 @@ router.post('/signout', async (req, res) => {
 		await db.query('DELETE FROM refresh_token WHERE tokenHash = ?', [tokenHash]);
 
 		return res.status(200).send({ message: 'Signed out successfully.' });
-	} catch (error) {
+	} catch { // TODO : catch the error & log it
 		return res.status(500).send({ message: 'Error : Unable to sign out.' });
 	}
 });
