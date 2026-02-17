@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const crypto = require('node:crypto');
+import jwt from 'jsonwebtoken';
+import crypto from 'node:crypto';
 
 const accessSecret = process.env.JWT_SECRET;
 const refreshSecret = process.env.JWT_REFRESH_SECRET;
@@ -35,7 +35,7 @@ function hashToken(token) {
 	return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-module.exports = {
+export {
 	hashToken,
 	validateToken,
 	generateAccessToken,

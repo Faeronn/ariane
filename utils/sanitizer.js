@@ -1,6 +1,6 @@
 function sanitizeInput(input) {
-	if (typeof input === 'string') return input.replace(/[<>'"]/g, '');
+	if (typeof input === 'string') return input.replaceAll(/[<>'"]/g, '');
 	return input;
 }
 
-module.exports = sanitizeInput;
+export default sanitizeInput;

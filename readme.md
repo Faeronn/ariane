@@ -41,8 +41,8 @@ npm install
 
 ### 3️⃣ Importer la base de données
 ```
-mariadb -u root -p -e "CREATE DATABASE ariane CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mariadb -u root -p ariane < ariane.sql
+mysql -u root -p -e "CREATE DATABASE ariane CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p ariane < ariane.sql
 ```
 
 ### 4️⃣ Variables d’environnement

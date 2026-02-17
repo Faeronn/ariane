@@ -1,10 +1,10 @@
-const { sendVerificationEmail } = require('../utils/mailer');
-const sanitizeInput = require('../utils/sanitizer');
-const { generateAccessToken, generateRefreshToken, hashToken } = require('../utils/jwt');
-const database = require('../utils/database');
-const crypto = require('node:crypto');
-const express = require('express');
-const bcrypt = require('bcrypt');
+import { generateAccessToken, generateRefreshToken, hashToken } from '../utils/jwt.js';
+import { sendVerificationEmail } from '../utils/mailer.js';
+import sanitizeInput from '../utils/sanitizer.js';
+import database from '../utils/database.js';
+import crypto from 'node:crypto';
+import express from 'express';
+import bcrypt from 'bcrypt';
 const router = express.Router();
 
 //TODO: Implement a logger and wrap [return response.status().send()]
@@ -129,4 +129,4 @@ function isUsernameValid(username) {
 	return /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,5}$/.test(username);
 }
 
-module.exports = router;
+export default router;

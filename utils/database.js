@@ -1,4 +1,4 @@
-const mariadb = require('mariadb');
+import mariadb from 'mariadb';
 
 const pool = mariadb.createPool({
 	host: process.env.DB_HOST,
@@ -20,4 +20,4 @@ async function query(sql, values) {
 	}
 }
 
-module.exports = { query };
+export default { query };

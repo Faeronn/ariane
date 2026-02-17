@@ -1,6 +1,4 @@
-const nodemailer = require('nodemailer');
-
-const API_URL = 'http://localhost:4444/auth/verify/';
+import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
 	host: process.env.MAIL_HOST,
@@ -45,4 +43,4 @@ async function sendVerificationEmail(to, verificationCode) {
 	}
 }
 
-module.exports = { sendVerificationEmail };
+export { sendVerificationEmail };

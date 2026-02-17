@@ -1,4 +1,5 @@
 const js = require("@eslint/js");
+const globals = require("globals");
 const unicorn = require("eslint-plugin-unicorn").default ?? require("eslint-plugin-unicorn");
 const sonarjs = require("eslint-plugin-sonarjs").default ?? require("eslint-plugin-sonarjs");
 
@@ -8,6 +9,9 @@ module.exports = [
   	js.configs.recommended,
 	{
 		files: ["**/*.js"],
+		languageOptions: {
+			globals: globals.node,
+		},
 		rules: {
 			'sonarjs/no-implicit-dependencies': 'error',
 			"no-unused-vars": "warn",

@@ -1,24 +1,24 @@
-require('dotenv').config();
-const authRouter = require('./routes/auth');
+import authRouter from './routes/auth.js';
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
 
-const bodyParser = require('body-parser');
-const express = require('express');
-const cors = require('cors');
+dotenv.config();
 const app = express();
+app.disable("x-powered-by");
 const port = process.env.PORT;
 
 //TODO : Security hardening with limiters, IP filters ect
 //Why not using an Interceptor for that
-app.use((req, res, next) => {
-	bodyParser.json()(req, res, err => {
-		if (err) return res.status(400).send({ message: 'Error : Bad JSON formatting.' });
+app.use((request, response, next) => {
+	express.json()(request, response, error => {
+		if (error) return response.status(400).send({ message: 'Error : Bad JSON formatting.' });
 
 		return next();
 	});
 });
-app.use(cors());
 
 // Routes
-app.use('/auth', authRouter);
+app.use('/auth', cors(), authRouter);
 
 app.listen(port, () => { console.log(`Server running on http://localhost:${port}`); });
