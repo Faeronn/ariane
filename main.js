@@ -7,6 +7,8 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT;
 
+//TODO : Security hardening with limiters, IP filters ect
+//Why not using an Interceptor for that
 app.use((req, res, next) => {
 	bodyParser.json()(req, res, err => {
 		if (err) return res.status(400).send({ message: 'Error : Bad JSON formatting.' });
