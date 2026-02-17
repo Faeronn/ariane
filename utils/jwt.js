@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
 const accessSecret = process.env.JWT_SECRET;
 const refreshSecret = process.env.JWT_REFRESH_SECRET;
