@@ -14,6 +14,7 @@ module.exports = [
 		},
 		rules: {
 			'sonarjs/no-implicit-dependencies': 'error',
+			'sonarjs/todo-tag': 'warn',
 			"no-unused-vars": "warn",
 			"no-undef": "warn",
 		},

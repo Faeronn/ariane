@@ -11,7 +11,6 @@ const transporter = nodemailer.createTransport({
 	tls: { ciphers: 'SSLv3' }
 });
 
-//TODO : Use a code instead ! Waste of ram jesus christ
 async function sendVerificationEmail(to, verificationCode) {
 	const mailOptions = {
 		from: process.env.MAIL_USER,
