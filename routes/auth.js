@@ -7,8 +7,8 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 const router = express.Router();
 
-//TODO: Implement a logger and wrap [return response.status().send()]
-//Maybe a custom util instead of the plain logger ?
+// TODO: Implement a logger and wrap [return response.status().send()]
+// Maybe create a custom util instead of using the default logger ?
 
 router.post('/signin', async (request, response) => {
 	const username = sanitizeInput(request.body.username);
@@ -30,7 +30,7 @@ router.post('/signin', async (request, response) => {
 		await database.query('INSERT INTO refresh_token (userID, tokenHash, expiresAt, createdAt) VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), UTC_TIMESTAMP())', [user.userID, refreshHash]);
 
 		return response.status(200).send({ message: 'Login successful!', accesstoken: token, refreshToken: refreshToken, user: {userID: user.userID, username: user.username, firstname: user.firstname, lastname: user.lastname}, expiresIn: 3600 });
-	} catch { // TODO : catch the error & log it
+	} catch { // TODO: Catch the error & log it
 		return response.status(500).send({ message: 'Error : Unable to sign in.' });
 	}
 });
@@ -63,12 +63,12 @@ router.post('/signup', async (request, response) => {
 		if (verificationQuery.affectedRows <= 0) return response.status(500).send({ message: 'Error : Unable to setup Verification.' });
 		sendVerificationEmail(username, verificationCode);
 		return response.status(200).send({ message: 'User created successfully.', user: {userID : signupQuery.insertId.toString(), userlogin : username } });
-	} catch { // TODO : catch the error & log it
+	} catch { // TODO: Catch the error & log it
 		return response.status(500).send({ message: 'Error : Unable to signup User.'});
 	}
 });
 
-//TODO : Security Hardening - Link the user to the code to stop bruteforce attacks to just activate all accounts
+// TODO: Security hardening — Link the verification code to the user to prevent brute-force attacks that could activate all accounts
 router.post('/verify/:code', async (request, response) => {
 	const verificationCode = String(sanitizeInput(request.params.code) ?? '').trim();
 	if (!verificationCode) return response.status(400).send({ message: 'Error : Missing information.' });
@@ -81,7 +81,7 @@ router.post('/verify/:code', async (request, response) => {
 		await database.query('UPDATE users SET isVerified = 1 WHERE userID = ?', [result[0].userID]);
 		await database.query('DELETE FROM verifications WHERE verificationCode = ?', [verificationCode]);
 		return response.status(200).send({ message: 'Valid verificationId.'});
-	} catch { // TODO : catch the error & log it
+	} catch { // TODO: Catch the error & log it
 		return response.status(500).send({ message: 'Error : Unable to verify email address.'});
 	}
 });
@@ -106,7 +106,7 @@ router.post('/refresh', async (request, response) => {
 
 		const accessToken = generateAccessToken({ username });
 		return response.status(200).send({ message: 'Token refreshed!', accesstoken: accessToken, refreshToken: newRefreshToken, expiresIn: 3600 });
-	} catch { // TODO : catch the error & log it
+	} catch { // TODO: Catch the error & log it
 		return response.status(500).send({ message: 'Error : Unable to refresh token.' });
 	}
 });
@@ -120,7 +120,7 @@ router.post('/signout', async (request, response) => {
 		await database.query('DELETE FROM refresh_token WHERE tokenHash = ?', [tokenHash]);
 
 		return response.status(200).send({ message: 'Signed out successfully.' });
-	} catch { // TODO : catch the error & log it
+	} catch { // TODO: Catch the error & log it
 		return response.status(500).send({ message: 'Error : Unable to sign out.' });
 	}
 });
