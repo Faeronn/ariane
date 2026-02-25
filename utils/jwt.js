@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 
-const accessSecret = process.env.JWT_SECRET;
+const accessSecret = process.env.JWT_ACCESS_SECRET;
 const refreshSecret = process.env.JWT_REFRESH_SECRET;
 if (!accessSecret) throw new Error('JWT_SECRET is missing');
 if (!refreshSecret) throw new Error('JWT_REFRESH_SECRET is missing');
