@@ -9,7 +9,6 @@ const router = express.Router();
 
 // TODO: Implement a logger and wrap [return response.status().send()]
 // Maybe create a custom util instead of using the default logger ?
-
 router.post('/signin', async (request, response) => {
 	const username = sanitizeInput(request.body.username);
 	const password = sanitizeInput(request.body.password);
@@ -17,7 +16,7 @@ router.post('/signin', async (request, response) => {
 
 	try {
 		const users = await database.query('SELECT * FROM users WHERE username = ?', [username]);
-    	if (users.length === 0) return response.status(401).send({ message: 'Error : Unable to sign in.' });
+		if (users.length === 0) return response.status(401).send({ message: 'Error : Unable to sign in.' });
 
 		const user = users[0];
 		const bcryptResult = await bcrypt.compare(password, user.password);
@@ -26,7 +25,7 @@ router.post('/signin', async (request, response) => {
 
 		const token = generateAccessToken({ username });
 		const refreshToken = generateRefreshToken();
-   		const refreshHash = hashToken(refreshToken);
+		const refreshHash = hashToken(refreshToken);
 		await database.query('INSERT INTO refresh_token (userID, tokenHash, expiresAt, createdAt) VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), UTC_TIMESTAMP())', [user.userID, refreshHash]);
 
 		return response.status(200).send({ message: 'Login successful!', accesstoken: token, refreshToken: refreshToken, user: {userID: user.userID, username: user.username, firstname: user.firstname, lastname: user.lastname}, expiresIn: 3600 });
@@ -54,7 +53,7 @@ router.post('/signup', async (request, response) => {
 		const signupQuery = await database.query('INSERT INTO users (username, password, firstname, lastname) VALUES (?, ?, ?, ?);', [username, hashedPassword, firstname, lastname]);
 		if (signupQuery.affectedRows <= 0) return response.status(500).send({ message: 'Error : Unable to create User.' });
 
-		const verificationCode = Array.from(crypto.getRandomValues(new Uint8Array(6)), x => x % 10).join('');
+		const verificationCode = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
 		const timeZoneOffset = new Date().getTimezoneOffset() * 60_000;
 		const rawExpiryDate = new Date((Date.now() - timeZoneOffset) + 3_600_000).toISOString();
 		const expiryDate = rawExpiryDate.replace('T', ' ').slice(0, 19);
