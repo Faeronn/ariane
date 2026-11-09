@@ -1,4 +1,5 @@
 import { getNvdClient, NvdError } from '../utils/nvd.js';
+import { productCandidates } from '../utils/software-name.js';
 import database from '../utils/database.js';
 import baseLogger from '../utils/logger.js';
 
@@ -45,6 +46,16 @@ export function pickCpe(software, products) {
 	return resolved.size === 1 ? [...resolved][0] : undefined;
 }
 
+// Try each product candidate of the display name ("Mozilla Firefox (x64 fr)" => firefox, ...)
+// until one resolves; at most one NVD keyword search per candidate. Resolves to undefined when none does.
+async function resolveByKeyword(client, software) {
+	for (const product of productCandidates(software)) {
+		const products = await client.searchCpes(`${product.replaceAll('_', ' ')} ${software.version}`);
+		const cpeName = pickCpe({ ...software, name: product }, products);
+		if (cpeName) return cpeName;
+	}
+}
+
 // One tick: resolve a bounded batch of pending keys and stale unmatched ones. Never overlaps itself;
 // an NVD failure ends the tick early and leaves the remaining keys for the next one.
 export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE } = {}) {
@@ -61,8 +72,7 @@ export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE 
 			// A packaged version is matched on its upstream one; distributions often backport fixes
 			// without changing it, so such matches are flagged for review rather than trusted.
 			const version = upstreamVersion(key.version);
-			const products = version ? await client.searchCpes(`${key.name} ${version}`) : [];
-			const cpeName = pickCpe({ ...key, version }, products);
+			const cpeName = version ? await resolveByKeyword(client, { ...key, version }) : undefined;
 			await database.query(`UPDATE software_cpe SET cpeName = NULLIF(?, ''), versionNormalized = ?, status = ?, lastCheckedAt = UTC_TIMESTAMP() WHERE softwareCpeID = ?`, [cpeName ?? '', version !== key.version, cpeName ? 'matched' : 'unmatched', key.softwareCpeID]);
 			summary[cpeName ? 'matched' : 'unmatched'] += 1;
 		}

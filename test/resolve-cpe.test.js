@@ -80,6 +80,25 @@ describe('resolve-cpe runOnce', () => {
 		assert.equal(Number(row.versionNormalized), 0);
 	});
 
+	it('resolves a Windows display name through its product candidates', async () => {
+		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['mozilla', 'mozilla firefox (x64 fr)', '115.0']);
+		stub.route('/cpes/2.0', 'firefox 115.0', loadFixture('cpes-firefox-115.0.json'));
+		await runOnce({ client });
+		const row = await keyRow('mozilla firefox (x64 fr)');
+		assert.equal(row.status, 'matched');
+		assert.equal(row.cpeName, 'cpe:2.3:a:mozilla:firefox:115.0:*:*:*:-:*:*:*');
+		assert.equal(stub.requests.find(({ query }) => query.keywordSearch?.includes('firefox'))?.query.keywordSearch, 'firefox 115.0');
+	});
+
+	it('marks a name made only of noise unmatched without calling NVD', async () => {
+		await database.query('DELETE FROM software_cpe');
+		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['', '(x64) 1.2.3', '1.2.3']);
+		await runOnce({ client });
+		const row = await keyRow('(x64) 1.2.3');
+		assert.equal(row.status, 'unmatched');
+		assert.equal(stub.requests.length, 0);
+	});
+
 	it('marks an unknown tool unmatched with lastCheckedAt set', async () => {
 		stub.route('/cpes/2.0', 'zzqx unknowntool 1.0', loadFixture('cpes-empty.json'));
 		await runOnce({ client });
