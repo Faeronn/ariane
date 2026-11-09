@@ -20,4 +20,8 @@ async function query(sql, values) {
 	}
 }
 
-export default { query };
+async function end() {
+	await pool.end();
+}
+
+export default { query, end };

@@ -43,3 +43,7 @@ venv/
 # Misc
 .tmp/
 .cache/
+
+# Test env
+.env.test
+!.env.test.example

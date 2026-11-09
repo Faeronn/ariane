@@ -94,8 +94,12 @@ npm run dev
 
 
 ## 🧪 Tests
+Les tests tournent sur une base MariaDB dédiée dont le nom finit par `_test` :
 ```
-npm test
+mysql -u root -p -e "CREATE DATABASE ariane_test CHARACTER SET utf8mb4; CREATE USER 'ariane_test'@'localhost' IDENTIFIED BY 'ariane_test'; GRANT ALL ON ariane_test.* TO 'ariane_test'@'localhost';"
+cp .env.test.example .env.test
+npm test                # suite complète
+npm run test:coverage   # + couverture par fichier
 ```
 
 ## 🚀 Roadmap

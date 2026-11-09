@@ -38,4 +38,7 @@ app.use(
 // Routes
 app.use('/auth', cors(), authRouter);
 
-app.listen(port, () => { logger.info(`Server running on http://localhost:${port}`); });
+if (import.meta.main) app.listen(port, () => { logger.info(`Server running on http://localhost:${port}`); });
+
+export default app;
+

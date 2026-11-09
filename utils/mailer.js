@@ -1,6 +1,10 @@
 import nodemailer from 'nodemailer';
 
-const transporter = nodemailer.createTransport({
+// MAIL_TRANSPORT=json renders mails to JSON instead of sending them (tests).
+const useJsonTransport = process.env.MAIL_TRANSPORT === 'json';
+// eslint-disable-next-line sonarjs/no-clear-text-protocols -- the JSON transport never opens a network connection
+const jsonTransporter = useJsonTransport ? nodemailer.createTransport({ jsonTransport: true }) : undefined;
+const transporter = jsonTransporter ?? nodemailer.createTransport({
 	host: process.env.MAIL_HOST,
 	port: process.env.MAIL_PORT,
 	secure: false, //TODO : Handle OAuth

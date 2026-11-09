@@ -5,10 +5,11 @@
 	"license": "ISC",
 	"author": "Faeronn",
 	"type": "module",
-	"main": "main.js",
+	"main": "app.js",
 	"scripts": {
-		"dev": "nodemon --env-file=.env main.js",
-		"test": "echo \"Error: testing is when you fear something\" && exit 1"
+		"dev": "nodemon --env-file=.env app.js",
+		"test": "node --env-file=.env.test --test --test-concurrency=1 --test-global-setup=test/helpers/database.js \"test/**/*.test.js\"",
+		"test:coverage": "node --env-file=.env.test --test --test-concurrency=1 --test-global-setup=test/helpers/database.js --experimental-test-coverage --test-coverage-include=\"{app.js,routes/**,middleware/**,utils/**,jobs/**}\" \"test/**/*.test.js\""
 	},
 	"dependencies": {
 		"bcrypt": "^6.0.0",
