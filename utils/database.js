@@ -37,8 +37,18 @@ async function transaction(work) {
 	}
 }
 
+// Run `work(connection)` on one dedicated pool connection, released afterwards.
+async function withConnection(work) {
+	const connection = await pool.getConnection();
+	try {
+		return await work(connection);
+	} finally {
+		await connection.release();
+	}
+}
+
 async function end() {
 	await pool.end();
 }
 
-export default { query, transaction, end };
+export default { query, transaction, withConnection, end };

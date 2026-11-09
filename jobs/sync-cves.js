@@ -1,6 +1,7 @@
 import { getNvdClient, NvdError } from '../utils/nvd.js';
 import { cveConditionsForCpe } from '../utils/cpe-match.js';
 import database from '../utils/database.js';
+import { withJobLock } from '../utils/job-lock.js';
 import baseLogger from '../utils/logger.js';
 
 const BATCH_SIZE = 10;
@@ -26,7 +27,7 @@ const toSqlDateTime = value => (value ? value.slice(0, 19).replace('T', ' ') : '
 
 // One tick: refresh the CVE links of a bounded batch of matched CPEs never synced or older than 24 h.
 // Each CPE's links are replaced atomically, so CVEs NVD no longer reports disappear.
-export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE } = {}) {
+async function tick({ client = getNvdClient(), batchSize = BATCH_SIZE } = {}) {
 	if (running) return { skipped: true };
 	running = true;
 	const summary = { synced: 0, linked: 0, failed: 0 };
@@ -69,6 +70,11 @@ function storeLinks(cpeName, cves) {
 		if (cves.length > 0) await connection.batch("INSERT INTO cpe_cve (cpeName, cveID, platforms) VALUES (?, ?, NULLIF(?, ''))", cves.map(cve => [cpeName, cve.id, cve.conditions.platforms.length > 0 ? JSON.stringify(cve.conditions.platforms) : '']));
 		await connection.query('UPDATE software_cpe SET cvesCheckedAt = UTC_TIMESTAMP() WHERE cpeName = ?', [cpeName]);
 	});
+}
+
+// One tick on one API instance at a time (database lock), never overlapping itself in-process.
+export function runOnce(options) {
+	return withJobLock('sync-cves', () => tick(options));
 }
 
 export function startSyncCvesJob(intervalMs = 15 * 60_000) {

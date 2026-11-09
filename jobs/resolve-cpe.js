@@ -1,6 +1,7 @@
 import { getNvdClient, NvdError } from '../utils/nvd.js';
 import { productCandidates } from '../utils/software-name.js';
 import database from '../utils/database.js';
+import { withJobLock } from '../utils/job-lock.js';
 import baseLogger from '../utils/logger.js';
 
 const BATCH_SIZE = 20;
@@ -87,7 +88,7 @@ async function resolve(client, software) {
 
 // One tick: resolve a bounded batch of pending keys and stale unmatched ones. Never overlaps itself;
 // an NVD failure ends the tick early and leaves the remaining keys for the next one.
-export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE } = {}) {
+async function tick({ client = getNvdClient(), batchSize = BATCH_SIZE } = {}) {
 	if (running) return { skipped: true };
 	running = true;
 	const summary = { matched: 0, unmatched: 0, failed: 0 };
@@ -113,6 +114,11 @@ export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE 
 		running = false;
 	}
 	return summary;
+}
+
+// One tick on one API instance at a time (database lock), never overlapping itself in-process.
+export function runOnce(options) {
+	return withJobLock('resolve-cpe', () => tick(options));
 }
 
 export function startResolveCpeJob(intervalMs = 5 * 60_000) {
