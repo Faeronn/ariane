@@ -13,6 +13,7 @@ import { startResolveCpeJob } from './jobs/resolve-cpe.js';
 import { startSyncCvesJob } from './jobs/sync-cves.js';
 import { startPurgeJob } from './jobs/purge.js';
 import { startDetectAlertsJob } from './jobs/detect-alerts.js';
+import { startSendAlertsJob } from './jobs/send-alerts.js';
 import { validateConfig } from './utils/config.js';
 import logger from './utils/logger.js';
 import database from './utils/database.js';
@@ -74,6 +75,7 @@ async function start() {
 		logger.info(`Server running on http://localhost:${port}`);
 		startPurgeJob();
 		startDetectAlertsJob();
+		startSendAlertsJob();
 		// Background NVD work, off the request path. NVD_ENABLED=false turns it off (tests, offline dev).
 		if (process.env.NVD_ENABLED !== 'false') {
 			startResolveCpeJob();

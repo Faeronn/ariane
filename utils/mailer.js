@@ -55,4 +55,39 @@ async function sendVerificationEmail(to, verificationCode) {
 	}
 }
 
+const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+
+function vulnerabilityLine({ cveID, severity, cvssScore, software, versionNormalized, platformDependent }) {
+	const link = `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveID)}`;
+	const score = cvssScore === undefined ? 'score en attente' : `${severity} ${cvssScore}`;
+	const affected = software.map(({ name, version }) => `${name} ${version}`).join(', ');
+	const toVerify = versionNormalized || platformDependent ? ' <em>(à vérifier : correctif de distribution ou plateforme possible)</em>' : '';
+	return `<li><a href="${escapeHtml(link)}">${escapeHtml(cveID)}</a> (${escapeHtml(score)}) : ${escapeHtml(affected)}${toVerify}</li>`;
+}
+
+// digest: { organization, total, shown, machines: [{ hostname, vulnerabilities: [...] }] }
+export function buildAlertDigest(to, digest) {
+	const machines = digest.machines.map(({ hostname, vulnerabilities }) => `<h3>${escapeHtml(hostname)}</h3><ul>${vulnerabilities.map(vulnerability => vulnerabilityLine(vulnerability)).join('')}</ul>`).join('');
+	const more = digest.total > digest.shown ? `<p>${digest.total - digest.shown} autre(s) : voir GET /machines/:id/vulns.</p>` : '';
+	return {
+		from: senderAddress(),
+		to,
+		subject: `[Ariane] ${digest.total} nouvelle(s) vulnérabilité(s) - ${digest.organization}`,
+		html: `<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+			<p>Nouvelles vulnérabilités détectées sur les machines de ${escapeHtml(digest.organization)} :</p>
+			${machines}${more}
+		</div>`
+	};
+}
+
+// Throws on failure: the caller keeps the alerts unsent and retries on its next tick.
+export async function sendAlertDigest(to, digest) {
+	const info = await transporter.sendMail(buildAlertDigest(to, digest));
+	logger.info({ messageId: info.messageId, recipients: to.length }, 'Alert digest sent');
+	return info;
+}
+
+// The transport in use, for tests that need to observe or fail deliveries.
+export const getTransporter = () => transporter;
+
 export { sendVerificationEmail };

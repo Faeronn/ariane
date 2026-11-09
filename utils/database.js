@@ -37,6 +37,16 @@ async function transaction(work) {
 	}
 }
 
+// One statement executed for each row of values (bulk insert or update).
+async function batch(sql, rows) {
+	const connection = await pool.getConnection();
+	try {
+		return await connection.batch(sql, rows);
+	} finally {
+		await connection.release();
+	}
+}
+
 // Run `work(connection)` on one dedicated pool connection, released afterwards.
 async function withConnection(work) {
 	const connection = await pool.getConnection();
@@ -51,4 +61,4 @@ async function end() {
 	await pool.end();
 }
 
-export default { query, transaction, withConnection, end };
+export default { query, batch, transaction, withConnection, end };
