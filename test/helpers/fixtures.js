@@ -1,4 +1,8 @@
+import { mock } from 'node:test';
+import pino from 'pino';
+import express from 'express';
 import database from '../../utils/database.js';
+import logger from '../../utils/logger.js';
 import { ALLOWED_DOMAIN } from './database.js';
 
 export const PASSWORD = process.env.TEST_USER_SECRET ?? 'Sup3r-secret';
@@ -37,7 +41,7 @@ export async function getVerificationCode(userID) {
 
 export async function verifyUser(baseUrl, user) {
 	const code = await getVerificationCode(user.userID);
-	const response = await api(baseUrl, 'POST', `/auth/verify/${code}`);
+	const response = await api(baseUrl, 'GET', `/auth/verify?username=${encodeURIComponent(user.username)}&code=${code}`);
 	if (response.status !== 200) throw new Error(`verify failed: ${response.status} ${response.text}`);
 }
 
@@ -56,4 +60,27 @@ export async function createSignedInUser(baseUrl, local = 'alice') {
 export async function countRows(table) {
 	const [row] = await database.query(`SELECT COUNT(*) AS n FROM \`${table}\``);
 	return Number(row.n);
+}
+
+// Capture (and mute) every log line written through the app logger and its children until restore().
+export function captureLogs() {
+	const lines = [];
+	const stream = logger[pino.symbols.streamSym];
+	const writeMock = mock.method(stream, 'write', chunk => {
+		lines.push(JSON.parse(chunk));
+		return true;
+	});
+	return { lines, restore: () => writeMock.mock.restore() };
+}
+
+// Listen on an ephemeral port with a throwaway Express app built by `configure`; returns { baseUrl, close }.
+export async function startThrowawayApp(configure) {
+	const app = express();
+	app.disable('x-powered-by');
+	configure(app);
+	const server = await new Promise(resolve => { const listening = app.listen(0, () => resolve(listening)); });
+	return {
+		baseUrl: `http://127.0.0.1:${server.address().port}`,
+		close: () => new Promise(resolve => server.close(resolve))
+	};
 }

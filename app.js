@@ -1,3 +1,5 @@
+import errorHandler from './middleware/error-handler.js';
+import jsonBody from './middleware/json-body.js';
 import authRouter from './routes/auth.js';
 import logger from './utils/logger.js';
 import pinoHttp from 'pino-http';
@@ -11,13 +13,7 @@ const port = process.env.PORT;
 
 //TODO : Security hardening with limiters, IP filters ect
 //Why not using an Interceptor for that
-app.use((request, response, next) => {
-	express.json()(request, response, error => {
-		if (error) return response.status(400).send({ message: 'Error : Bad JSON formatting.' });
-
-		return next();
-	});
-});
+app.use(jsonBody);
 
 app.use(
 	pinoHttp({
@@ -37,6 +33,8 @@ app.use(
 
 // Routes
 app.use('/auth', cors(), authRouter);
+
+app.use(errorHandler);
 
 if (import.meta.main) app.listen(port, () => { logger.info(`Server running on http://localhost:${port}`); });
 

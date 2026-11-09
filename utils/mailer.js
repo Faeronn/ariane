@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import logger from './logger.js';
 
 // MAIL_TRANSPORT=json renders mails to JSON instead of sending them (tests).
 const useJsonTransport = process.env.MAIL_TRANSPORT === 'json';
@@ -11,8 +12,7 @@ const transporter = jsonTransporter ?? nodemailer.createTransport({
 	auth: {
 		user: process.env.MAIL_USER,
 		pass: process.env.MAIL_PASS
-	},
-	tls: { ciphers: 'SSLv3' }
+	}
 });
 
 async function sendVerificationEmail(to, verificationCode) {
@@ -39,10 +39,10 @@ async function sendVerificationEmail(to, verificationCode) {
 	};
 
 	try {
-		let info = await transporter.sendMail(mailOptions);
-		console.log('Email sent: ' + info.response);
+		const info = await transporter.sendMail(mailOptions);
+		logger.info({ messageId: info.messageId }, 'Verification email sent');
 	} catch (error) {
-		console.error('Failed to send email:', error);
+		logger.error(error, 'Failed to send verification email');
 	}
 }
 

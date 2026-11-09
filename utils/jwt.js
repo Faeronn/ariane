@@ -3,28 +3,16 @@ import crypto from 'node:crypto';
 
 const accessSecret = process.env.JWT_ACCESS_SECRET;
 const refreshSecret = process.env.JWT_REFRESH_SECRET;
-if (!accessSecret) throw new Error('JWT_SECRET is missing');
+if (!accessSecret) throw new Error('JWT_ACCESS_SECRET is missing');
 if (!refreshSecret) throw new Error('JWT_REFRESH_SECRET is missing');
-
-const validateToken = (request, response, next) => {
-	const authHeader = request.headers['authorization'];
-	if (!authHeader?.startsWith('Bearer ')) return response.status(401).send({ message: 'Error : A token is required to access this route.' });
-
-	const token = authHeader.slice('Bearer '.length);
-	try {
-		jwt.verify(token, accessSecret, (error, decoded) => {
-			if (error) return response.status(403).send({ message: 'Error : Token is not valid.' });
-
-			request.user = decoded;
-			return next();
-		});
-	} catch {
-		return response.status(403).send({ message: 'Error : Token is not valid.' });
-	}
-};
 
 function generateAccessToken(userInfo) {
 	return jwt.sign(userInfo, accessSecret, { expiresIn: '1h' });
+}
+
+// Returns the decoded payload; throws when the token is invalid or expired.
+function verifyAccessToken(token) {
+	return jwt.verify(token, accessSecret);
 }
 
 function generateRefreshToken() {
@@ -37,7 +25,7 @@ function hashToken(token) {
 
 export {
 	hashToken,
-	validateToken,
+	verifyAccessToken,
 	generateAccessToken,
 	generateRefreshToken
 };

@@ -66,10 +66,13 @@ CREATE TABLE `users`  (
 DROP TABLE IF EXISTS `verifications`;
 CREATE TABLE `verifications`  (
   `verificationID` int NOT NULL AUTO_INCREMENT,
-  `userID` int NULL DEFAULT NULL,
+  `userID` int NOT NULL,
   `verificationCode` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
   `expiryDate` datetime NULL DEFAULT NULL,
-  PRIMARY KEY (`verificationID`) USING BTREE
+  `attempts` int NOT NULL DEFAULT 0,
+  PRIMARY KEY (`verificationID`) USING BTREE,
+  UNIQUE INDEX `uniq_userID`(`userID`) USING BTREE,
+  CONSTRAINT `verifications_ibfk_1` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`) ON DELETE CASCADE ON UPDATE RESTRICT
 ) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;

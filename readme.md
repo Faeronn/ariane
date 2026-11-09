@@ -79,7 +79,7 @@ npm run dev
 |---------|-----------------|----------------------|
 | POST    | /auth/signup    | Création utilisateur |
 | POST    | /auth/signin    | Connexion            |
-| GET     | /auth/verify    | Vérification email   |
+| GET     | /auth/verify?username=&code= | Vérification email (5 essais, 1 h) |
 | POST    | /auth/refresh   | Nouveau access token |
 | POST    | /auth/logout    | Révocation refresh   |
 

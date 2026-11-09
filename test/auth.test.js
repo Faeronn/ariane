@@ -1,6 +1,7 @@
-import { describe, it, before, beforeEach, after } from 'node:test';
+import { describe, it, before, beforeEach, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { api, createUser, verifyUser, signIn, createSignedInUser, getVerificationCode, countRows, PASSWORD } from './helpers/fixtures.js';
+import { api, createUser, verifyUser, signIn, createSignedInUser, getVerificationCode, countRows, captureLogs, startThrowawayApp, PASSWORD } from './helpers/fixtures.js';
+import authenticateUser from '../middleware/authenticate-user.js';
 import { startServer } from './helpers/server.js';
 import { reset } from './helpers/database.js';
 import database from '../utils/database.js';
@@ -80,13 +81,126 @@ describe('POST /auth/refresh', () => {
 	});
 });
 
-describe('POST /auth/signout', () => {
+describe('POST /auth/logout', () => {
 	it('deletes the refresh token', async () => {
 		const { refreshToken } = await createSignedInUser(server.baseUrl);
-		const response = await api(server.baseUrl, 'POST', '/auth/signout', { body: { refreshToken } });
+		const response = await api(server.baseUrl, 'POST', '/auth/logout', { body: { refreshToken } });
 		assert.equal(response.status, 200);
 		const rows = await database.query('SELECT id FROM refresh_token WHERE tokenHash = ?', [hashToken(refreshToken)]);
 		assert.equal(rows.length, 0);
+	});
+
+	it('the old /auth/signout route is gone', async () => {
+		const response = await api(server.baseUrl, 'POST', '/auth/signout', { body: { refreshToken: 'x' } });
+		assert.equal(response.status, 404);
+	});
+});
+
+const verify = (username, code) => api(server.baseUrl, 'GET', `/auth/verify?username=${encodeURIComponent(username)}&code=${code}`);
+const wrongCode = code => String((Number(code) + 1) % 1_000_000).padStart(6, '0');
+const statusOf = async request => {
+	const response = await request;
+	return response.status;
+};
+async function isVerified(userID) {
+	const [user] = await database.query('SELECT isVerified FROM users WHERE userID = ?', [userID]);
+	return user.isVerified === 1;
+}
+
+describe('GET /auth/verify', () => {
+
+	it('verifies the user owning the code', async () => {
+		const user = await createUser(server.baseUrl);
+		const response = await verify(user.username, await getVerificationCode(user.userID));
+		assert.equal(response.status, 200);
+		assert.ok(await isVerified(user.userID));
+		assert.equal(await countRows('verifications'), 0);
+	});
+
+	it('rejects the code of another user', async () => {
+		const alice = await createUser(server.baseUrl, 'alice');
+		const bob = await createUser(server.baseUrl, 'bob');
+		const aliceCode = await getVerificationCode(alice.userID);
+		const bobCode = await getVerificationCode(bob.userID);
+		if (aliceCode === bobCode) await database.query('UPDATE verifications SET verificationCode = ? WHERE userID = ?', [wrongCode(aliceCode), bob.userID]);
+
+		const response = await verify(alice.username, await getVerificationCode(bob.userID));
+		assert.equal(response.status, 400);
+		assert.ok(!(await isVerified(alice.userID)));
+	});
+
+	it('locks the code after 5 wrong attempts, even for the right code', async () => {
+		const user = await createUser(server.baseUrl);
+		const code = await getVerificationCode(user.userID);
+		for (let attempt = 0; attempt < 5; attempt += 1) assert.equal(await statusOf(verify(user.username, wrongCode(code))), 400);
+
+		const response = await verify(user.username, code);
+		assert.equal(response.status, 410);
+		assert.equal(await countRows('verifications'), 0);
+		assert.ok(!(await isVerified(user.userID)));
+	});
+
+	it('rejects an expired code with 410', async () => {
+		const user = await createUser(server.baseUrl);
+		await database.query('UPDATE verifications SET expiryDate = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 MINUTE) WHERE userID = ?', [user.userID]);
+		const response = await verify(user.username, await getVerificationCode(user.userID));
+		assert.equal(response.status, 410);
+		assert.ok(!(await isVerified(user.userID)));
+	});
+
+	it('answers an unknown user like a wrong code', async () => {
+		const response = await verify('nobody@ariane.test', '123456');
+		assert.equal(response.status, 400);
+		assert.equal(response.body.message, 'Error : Invalid verification code.');
+	});
+
+	it('rejects missing or malformed parameters', async () => {
+		assert.equal(await statusOf(api(server.baseUrl, 'GET', '/auth/verify?code=123456')), 400);
+		assert.equal(await statusOf(verify('alice@ariane.test', '12ab56')), 400);
+	});
+
+	it('the old POST /auth/verify/:code route is gone', async () => {
+		assert.equal(await statusOf(api(server.baseUrl, 'POST', '/auth/verify/123456')), 404);
+	});
+});
+
+describe('authenticateUser middleware', () => {
+	let protectedServer;
+	before(async () => {
+		protectedServer = await startThrowawayApp(app => app.get('/private', authenticateUser, (request, response) => response.send({ message: 'ok', user: request.user.username })));
+	});
+	after(() => protectedServer.close());
+	const privateUrl = () => protectedServer.baseUrl;
+
+	it('accepts a valid access token', async () => {
+		const { accessToken, username } = await createSignedInUser(server.baseUrl);
+		const response = await api(privateUrl(), 'GET', '/private', { token: accessToken });
+		assert.equal(response.status, 200);
+		assert.equal(response.body.user, username);
+	});
+
+	it('rejects a missing Bearer with 401', async () => {
+		assert.equal(await statusOf(api(privateUrl(), 'GET', '/private')), 401);
+	});
+
+	it('rejects an invalid token with 403', async () => {
+		assert.equal(await statusOf(api(privateUrl(), 'GET', '/private', { token: 'not.a.jwt' })), 403);
+	});
+});
+
+describe('unhandled database failure', () => {
+	it('signin answers 500 JSON and logs the error with pino', async () => {
+		const logs = captureLogs();
+		const queryMock = mock.method(database, 'query', () => Promise.reject(new Error('database is down')));
+		try {
+			const response = await api(server.baseUrl, 'POST', '/auth/signin', { body: { username: 'alice@ariane.test', password: PASSWORD } });
+			assert.equal(response.status, 500);
+			assert.equal(response.body.message, 'Error : Unable to sign in.');
+		} finally {
+			queryMock.mock.restore();
+			logs.restore();
+		}
+		assert.ok(logs.lines.some(line => line.level === 50 && line.err?.message === 'database is down'));
 	});
 });
 
