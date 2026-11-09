@@ -16,6 +16,18 @@ describe('compareVersions', () => {
 		assert.ok(compareVersions('1.0.2zb', '1.0.2zd') < 0);
 	});
 
+	it('orders pre-releases before their release', () => {
+		assert.ok(compareVersions('3.0.0-beta1', '3.0.0') < 0);
+		assert.ok(compareVersions('3.0.0', '3.0.0-rc1') > 0);
+		assert.ok(compareVersions('3.0.0-alpha2', '3.0.0-beta1') < 0);
+		assert.ok(compareVersions('3.0.0-rc1', '3.0.0p1') < 0);
+		assert.ok(compareVersions('3.0.0-rc1', '2.9.9') > 0);
+	});
+
+	it('keeps single letters as patch releases', () => {
+		assert.ok(compareVersions('1.1.1a', '1.1.1') > 0);
+	});
+
 	it('finds equal versions equal', () => {
 		assert.equal(compareVersions('3.0.0', '3.0.0'), 0);
 	});

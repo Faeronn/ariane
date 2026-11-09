@@ -5,19 +5,29 @@ const VERSION_FIELD = 5;
 
 const tokenize = version => version.toLowerCase().match(/\d+|[a-z]+/g) ?? [];
 
+// Full words only: a single letter is an openssl patch release (1.1.1a), not a pre-release.
+const isPreRelease = token => /^(?:alpha|beta|dev|pre|preview|rc)$/.test(token);
+
+// Order of two tokens at the same position; `undefined` means that version has ended.
+function compareTokens(a, b) {
+	if (a === undefined) return isPreRelease(b) ? 1 : -1;
+	if (b === undefined || isPreRelease(a) !== isPreRelease(b)) return isPreRelease(a) ? -1 : 1;
+	const bothNumeric = /^\d/.test(a) && /^\d/.test(b);
+	return Math.sign(bothNumeric ? Number(a) - Number(b) : a.localeCompare(b));
+}
+
 // Compare versions token by token: digit runs numerically, letter runs alphabetically; a version
-// that is a prefix of the other is older (openssl 1.1.1 < 1.1.1m). Returns <0, 0 or >0.
+// that is a prefix of the other is older (openssl 1.1.1 < 1.1.1m), unless the longer one goes on
+// with a pre-release word (3.0.0-rc1 < 3.0.0). Returns <0, 0 or >0.
 export function compareVersions(left, right) {
 	const leftTokens = tokenize(left);
 	const rightTokens = tokenize(right);
 
-	for (let index = 0; index < Math.min(leftTokens.length, rightTokens.length); index += 1) {
-		const [a, b] = [leftTokens[index], rightTokens[index]];
-		const bothNumeric = /^\d/.test(a) && /^\d/.test(b);
-		const order = bothNumeric ? Number(a) - Number(b) : a.localeCompare(b);
-		if (order !== 0) return Math.sign(order);
+	for (let index = 0; index < Math.max(leftTokens.length, rightTokens.length); index += 1) {
+		const order = compareTokens(leftTokens[index], rightTokens[index]);
+		if (order !== 0) return order;
 	}
-	return Math.sign(leftTokens.length - rightTokens.length);
+	return 0;
 }
 
 // Every field but the version agrees (`*` on either side matches anything).
