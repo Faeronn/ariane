@@ -12,12 +12,14 @@ router.use(authenticateUser);
 const isoUtc = column => `DATE_FORMAT(${column}, '%Y-%m-%dT%H:%i:%sZ')`;
 const LATEST_SNAPSHOT = 'SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = m.machineID';
 const LATEST_SNAPSHOT_OF = 'SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?';
+// Every route below only sees machines of the caller's organization; another organization's
+// machine answers 404 like an unknown id, so ids never reveal what exists elsewhere.
 
 router.get('/', async (request, response) => {
 	try {
 		const machines = await database.query(`SELECT m.machineID, m.hostname, m.osFamily, m.osVersion, ${isoUtc('m.createdAt')} AS createdAt, ${isoUtc('m.lastSeenAt')} AS lastSeenAt, ${isoUtc('m.revokedAt')} AS revokedAt,
 			(SELECT COUNT(*) FROM installed_software s WHERE s.snapshotID = (${LATEST_SNAPSHOT})) AS softwareCount
-			FROM machines m ORDER BY m.machineID`);
+			FROM machines m WHERE m.orgID = ? ORDER BY m.machineID`, [request.user.orgID]);
 
 		return response.status(200).send({ message: 'Machines retrieved.', machines: machines.map(machine => ({ ...machine, softwareCount: Number(machine.softwareCount) })) });
 	} catch (error) {
@@ -35,7 +37,7 @@ router.get('/:id', async (request, response) => {
 		const machines = await database.query(`SELECT m.machineID, m.hostname, m.osFamily, m.osVersion, ${isoUtc('m.createdAt')} AS createdAt, ${isoUtc('m.lastSeenAt')} AS lastSeenAt, ${isoUtc('m.revokedAt')} AS revokedAt,
 			snap.snapshotID, ${isoUtc('snap.collectedAt')} AS collectedAt
 			FROM machines m LEFT JOIN inventory_snapshot snap ON snap.snapshotID = (${LATEST_SNAPSHOT})
-			WHERE m.machineID = ?`, [machineID]);
+			WHERE m.machineID = ? AND m.orgID = ?`, [machineID, request.user.orgID]);
 		if (machines.length === 0) return response.status(404).send({ message: 'Error : Machine not found.' });
 
 		const { snapshotID, collectedAt, ...machine } = machines[0];
@@ -55,7 +57,7 @@ router.get('/:id/vulns', async (request, response) => {
 	if (!machineID) return response.status(400).send({ message: 'Error : Invalid machine id.' });
 
 	try {
-		const machines = await database.query('SELECT machineID FROM machines WHERE machineID = ?', [machineID]);
+		const machines = await database.query('SELECT machineID FROM machines WHERE machineID = ? AND orgID = ?', [machineID, request.user.orgID]);
 		if (machines.length === 0) return response.status(404).send({ message: 'Error : Machine not found.' });
 
 		const rows = await database.query(`SELECT c.cveID, c.severity, c.cvssScore, ${isoUtc('c.published')} AS published, s.name, s.version, sc.versionNormalized
@@ -109,7 +111,7 @@ router.delete('/:id', async (request, response) => {
 	if (!machineID) return response.status(400).send({ message: 'Error : Invalid machine id.' });
 
 	try {
-		const machines = await database.query('SELECT machineID FROM machines WHERE machineID = ?', [machineID]);
+		const machines = await database.query('SELECT machineID FROM machines WHERE machineID = ? AND orgID = ?', [machineID, request.user.orgID]);
 		if (machines.length === 0) return response.status(404).send({ message: 'Error : Machine not found.' });
 
 		await database.query('UPDATE machines SET revokedAt = UTC_TIMESTAMP() WHERE machineID = ? AND revokedAt IS NULL', [machineID]);
