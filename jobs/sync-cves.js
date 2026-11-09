@@ -32,12 +32,12 @@ export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE 
 	const summary = { synced: 0, linked: 0, failed: 0 };
 
 	try {
-		const cpes = await database.query(`SELECT cpeName FROM software_cpe
+		const cpes = await database.query(`SELECT cpeName, MAX(cpeSynthetic) AS synthetic FROM software_cpe
 			WHERE status = 'matched' AND (cvesCheckedAt IS NULL OR cvesCheckedAt < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? HOUR))
 			GROUP BY cpeName ORDER BY MIN(cvesCheckedAt IS NOT NULL), MIN(cvesCheckedAt) LIMIT ?`, [REFRESH_AFTER_HOURS, batchSize]);
 
-		for (const { cpeName } of cpes) {
-			const vulnerabilities = await client.getCvesByCpe(cpeName);
+		for (const { cpeName, synthetic } of cpes) {
+			const vulnerabilities = await client.getCvesByCpe(cpeName, { virtual: Boolean(synthetic) });
 			const cves = vulnerabilities.map(({ cve }) => cve).filter(cve => cveAffectsCpe(cve, cpeName));
 			await storeLinks(cpeName, cves);
 			summary.synced += 1;

@@ -75,6 +75,22 @@ describe('sync-cves runOnce', () => {
 	});
 });
 
+describe('sync-cves on a synthetic CPE', () => {
+	const CHROME_CPE = 'cpe:2.3:a:google:chrome:122.0.6261.112:*:*:*:*:*:*:*';
+
+	it('queries virtualMatchString and links only the CVEs whose range covers the version', async () => {
+		await database.query('DELETE FROM software_cpe');
+		await database.query(`INSERT INTO software_cpe (vendor, name, version, cpeName, cpeSynthetic, status, lastCheckedAt) VALUES ('google llc', 'google chrome', '122.0.6261.112', ?, 1, 'matched', UTC_TIMESTAMP())`, [CHROME_CPE]);
+		stub.route('/cves/2.0', CHROME_CPE, loadFixture('cves-virtual-chrome-122.0.6261.112.json'));
+		await runOnce({ client });
+
+		assert.deepEqual(stub.requests.map(({ query }) => [query.virtualMatchString, query.cpeName]), [[CHROME_CPE, undefined]]);
+		const rows = await database.query('SELECT cveID FROM cpe_cve WHERE cpeName = ? ORDER BY cveID', [CHROME_CPE]);
+		// CVE-2000-0122 is the fixture's synthetic copy fixed before 122: never linked.
+		assert.deepEqual(rows.map(({ cveID }) => cveID), ['CVE-2024-2400', 'CVE-2024-2625', 'CVE-2024-2626']);
+	});
+});
+
 const metricsOf = id => structuredClone(loadFixture('cves-openssl-3.0.0.json').vulnerabilities.find(({ cve }) => cve.id === id).cve.metrics);
 
 describe('pickScore', () => {

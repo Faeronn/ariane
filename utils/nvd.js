@@ -80,7 +80,10 @@ export function createNvdClient({
 	return {
 		searchCpes: keyword => getAllPages('/cpes/2.0', { keywordSearch: keyword }, 'products'),
 		searchCpesByMatchString: cpeMatchString => getAllPages('/cpes/2.0', { cpeMatchString }, 'products'),
-		getCvesByCpe: cpeName => getAllPages('/cves/2.0', { cpeName }, 'vulnerabilities')
+		// One single-result page: does the dictionary know anything matching (e.g. a vendor:product)?
+		cpeExists: cpeMatchString => getJson('/cpes/2.0', { cpeMatchString, resultsPerPage: 1 }).then(page => (page.totalResults ?? 0) > 0),
+		// A synthetic CPE is not in the dictionary: virtualMatchString matches it against CVE criteria.
+		getCvesByCpe: (cpeName, { virtual = false } = {}) => getAllPages('/cves/2.0', virtual ? { virtualMatchString: cpeName } : { cpeName }, 'vulnerabilities')
 	};
 }
 

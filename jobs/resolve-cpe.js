@@ -54,10 +54,18 @@ async function findAlias({ name, vendor }) {
 	return alias;
 }
 
-// Known product: ask the CPE dictionary for exactly this vendor, product and version.
+// Versions safe to place unescaped in a CPE 2.3 formatted string.
+const SYNTHETIC_VERSION = /^[\w.-]+$/;
+
+// Known product: ask the CPE dictionary for exactly this vendor, product and version. When the
+// dictionary lacks the version but knows the product, build the CPE name ourselves (synthetic).
 async function resolveByAlias(client, software, alias) {
-	const products = await client.searchCpesByMatchString(`cpe:2.3:${alias.cpePart}:${alias.cpeVendor}:${alias.cpeProduct}:${software.version}`);
-	return pickCpe({ name: alias.cpeProduct, vendor: alias.cpeVendor, version: software.version }, products);
+	const product = `cpe:2.3:${alias.cpePart}:${alias.cpeVendor}:${alias.cpeProduct}`;
+	const products = await client.searchCpesByMatchString(`${product}:${software.version}`);
+	const cpeName = pickCpe({ name: alias.cpeProduct, vendor: alias.cpeVendor, version: software.version }, products);
+	if (cpeName) return { cpeName, synthetic: false };
+	if (!SYNTHETIC_VERSION.test(software.version) || !(await client.cpeExists(product))) return {};
+	return { cpeName: `${product}:${software.version}:*:*:*:*:*:*:*`, synthetic: true };
 }
 
 // Try each product candidate of the display name ("Mozilla Firefox (x64 fr)" => firefox, ...)
@@ -73,7 +81,8 @@ async function resolveByKeyword(client, software) {
 // An alias, when one matches, decides alone; otherwise the name candidates are searched.
 async function resolve(client, software) {
 	const alias = await findAlias(software);
-	return alias ? resolveByAlias(client, software, alias) : resolveByKeyword(client, software);
+	if (alias) return resolveByAlias(client, software, alias);
+	return { cpeName: await resolveByKeyword(client, software), synthetic: false };
 }
 
 // One tick: resolve a bounded batch of pending keys and stale unmatched ones. Never overlaps itself;
@@ -92,8 +101,8 @@ export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE 
 			// A packaged version is matched on its upstream one; distributions often backport fixes
 			// without changing it, so such matches are flagged for review rather than trusted.
 			const version = upstreamVersion(key.version);
-			const cpeName = version ? await resolve(client, { ...key, version }) : undefined;
-			await database.query(`UPDATE software_cpe SET cpeName = NULLIF(?, ''), versionNormalized = ?, status = ?, lastCheckedAt = UTC_TIMESTAMP() WHERE softwareCpeID = ?`, [cpeName ?? '', version !== key.version, cpeName ? 'matched' : 'unmatched', key.softwareCpeID]);
+			const { cpeName, synthetic = false } = version ? await resolve(client, { ...key, version }) : {};
+			await database.query(`UPDATE software_cpe SET cpeName = NULLIF(?, ''), cpeSynthetic = ?, versionNormalized = ?, status = ?, lastCheckedAt = UTC_TIMESTAMP() WHERE softwareCpeID = ?`, [cpeName ?? '', synthetic, version !== key.version, cpeName ? 'matched' : 'unmatched', key.softwareCpeID]);
 			summary[cpeName ? 'matched' : 'unmatched'] += 1;
 		}
 	} catch (error) {

@@ -111,7 +111,11 @@ Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et 
 ```
 Réponse `201 { "message": "Inventory received.", "snapshotID": 42 }`. Chaque envoi crée un snapshot ; l’état d’une machine est son dernier snapshot.
 
-Les logiciels reçus sont associés à un CPE puis à leurs CVE par des jobs NVD en tâche de fond (jamais pendant la requête). Réponse de `GET /machines/:id/vulns` (triée par score CVSS décroissant, une entrée par CVE) :
+Les logiciels reçus sont associés à un CPE puis à leurs CVE par des jobs NVD en tâche de fond (jamais pendant la requête). L’association procède dans cet ordre :
+1. **Alias** : les logiciels courants (navigateurs, 7-Zip, Notepad++, VLC, PuTTY, Python, Git…) sont reconnus par leur nom (`migrations/003-software-aliases.sql`) et cherchés directement par vendeur, produit et version. Si le dictionnaire NVD ne connaît pas encore cette version précise, un CPE est construit pour elle et ses CVE sont trouvées par les plages de versions vulnérables.
+2. **Nom nettoyé** : sinon, le nom affiché est nettoyé (architecture, langue, version, éditeur retirés : « Mozilla Firefox (x64 fr) » => `firefox`) puis cherché par mots-clés.
+
+Réponse de `GET /machines/:id/vulns` (triée par score CVSS décroissant, une entrée par CVE) :
 ```json
 {
   "message": "Vulnerabilities retrieved.",

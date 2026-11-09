@@ -106,6 +106,8 @@ describe('resolve-cpe runOnce', () => {
 		assert.equal(row.cpeName, 'cpe:2.3:a:mozilla:firefox:115.0:*:*:*:-:*:*:*');
 		const firefoxRequests = stub.requests.filter(({ query }) => JSON.stringify(query).includes('firefox'));
 		assert.deepEqual(firefoxRequests.map(({ query }) => query.cpeMatchString), ['cpe:2.3:a:mozilla:firefox:115.0']);
+		const [synthetic] = await database.query('SELECT cpeSynthetic FROM software_cpe WHERE name = ?', ['mozilla firefox (x64 en-us)']);
+		assert.equal(Number(synthetic.cpeSynthetic), 0);
 	});
 
 	it('prefers the most specific alias (firefox ESR over firefox)', async () => {
@@ -114,12 +116,27 @@ describe('resolve-cpe runOnce', () => {
 		assert.ok(stub.requests.some(({ query }) => query.cpeMatchString === 'cpe:2.3:a:mozilla:firefox_esr:115.6.0'));
 	});
 
-	it('leaves an aliased key unmatched when the dictionary has no such version', async () => {
+	it('builds a synthetic CPE for an aliased product whose version the dictionary lacks', async () => {
+		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['google llc', 'google chrome', '122.0.6261.112']);
+		stub.route('/cpes/2.0', 'cpe:2.3:a:google:chrome', { products: [{ cpe: { cpeName: 'cpe:2.3:a:google:chrome:0.2.149.29:*:*:*:*:*:*:*' } }] });
+		await runOnce({ client });
+		const [row] = await database.query('SELECT cpeName, cpeSynthetic, status FROM software_cpe WHERE name = ?', ['google chrome']);
+		assert.deepEqual({ ...row, cpeSynthetic: Number(row.cpeSynthetic) }, { cpeName: 'cpe:2.3:a:google:chrome:122.0.6261.112:*:*:*:*:*:*:*', cpeSynthetic: 1, status: 'matched' });
+	});
+
+	it('leaves an aliased key unmatched when the dictionary does not know the product either', async () => {
 		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['google llc', 'google chrome', '122.0.6261.112']);
 		await runOnce({ client });
 		const row = await keyRow('google chrome');
 		assert.equal(row.status, 'unmatched');
 		assert.ok(!stub.requests.some(({ query }) => query.keywordSearch?.includes('chrome')));
+	});
+
+	it('never builds a synthetic CPE on the keyword path', async () => {
+		await runOnce({ client });
+		const rows = await database.query('SELECT cpeSynthetic FROM software_cpe');
+		assert.ok(rows.every(({ cpeSynthetic }) => Number(cpeSynthetic) === 0));
+		assert.ok(!stub.requests.some(({ query }) => query.resultsPerPage === '1'));
 	});
 
 	it('marks a name made only of noise unmatched without calling NVD', async () => {
