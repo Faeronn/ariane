@@ -34,7 +34,11 @@ function checkTrustProxy(environment, report) {
 	if (isSet(environment, 'TRUST_PROXY') && !/^\d+$/.test(environment.TRUST_PROXY)) report.errors.push('TRUST_PROXY must be the number of reverse proxies in front of the API (0 or empty when none).');
 }
 
-const RULES = [checkRequired, checkMail, checkNvd, checkCors, checkTrustProxy];
+function checkRetention(environment, report) {
+	if (isSet(environment, 'SNAPSHOT_RETENTION_DAYS') && !/^[1-9]\d*$/.test(environment.SNAPSHOT_RETENTION_DAYS)) report.errors.push('SNAPSHOT_RETENTION_DAYS must be a whole number of days (1 or more).');
+}
+
+const RULES = [checkRequired, checkMail, checkNvd, checkCors, checkTrustProxy, checkRetention];
 
 export function validateConfig(environment = process.env) {
 	const report = { errors: [], warnings: [] };
