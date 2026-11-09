@@ -4,9 +4,9 @@ Outil d’inventaire logiciel et de suivi de vulnérabilités (CVE) pour machine
 ## ✨ Fonctionnalités
 - 🔐 Authentification JWT + Refresh Token
 - 📧 Vérification d’email à l’inscription
-- 🖥️ [ W.I.P ] Gestion d’une flotte de machines
-- 🧠 [ W.I.P ] Normalisation logiciel → CPE → CVE
-- 🚨 [ W.I.P ] Détection des vulnérabilités par version installée
+- 🖥️ Gestion d’une flotte de machines (enrôlement, clé agent par machine)
+- 🧠 Normalisation logiciel → CPE → CVE (NVD API 2.0)
+- 🚨 Détection des vulnérabilités par version installée
 - 📊 [ W.I.P ] API REST prête pour dashboard
 
 ## 🏗️ Stack technique
@@ -89,7 +89,7 @@ npm run dev
 | POST    | /auth/refresh   | Nouveau access token |
 | POST    | /auth/logout    | Révocation refresh   |
 
-#### 🖥️ Inventaire [W.I.P]
+#### 🖥️ Inventaire
 
 | Méthode | Route                 | Description                  |
 |---------|-----------------------|------------------------------|
@@ -116,6 +116,24 @@ Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et 
 ```
 Réponse `201 { "message": "Inventory received.", "snapshotID": 42 }`. Chaque envoi crée un snapshot ; l’état d’une machine est son dernier snapshot.
 
+Les logiciels reçus sont associés à un CPE puis à leurs CVE par des jobs NVD en tâche de fond (jamais pendant la requête). Réponse de `GET /machines/:id/vulns` (triée par score CVSS décroissant, une entrée par CVE) :
+```json
+{
+  "message": "Vulnerabilities retrieved.",
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2022-0778",
+      "severity": "HIGH",
+      "cvssScore": 7.5,
+      "published": "2022-03-15T17:15:08Z",
+      "software": [{ "name": "openssl", "version": "3.0.0" }]
+    }
+  ],
+  "unmappedSoftware": 2
+}
+```
+`unmappedSoftware` compte les logiciels du dernier snapshot sans CPE (pas encore résolus ou introuvables dans le NVD).
+
 
 ## 🧪 Tests
 Les tests tournent sur une base MariaDB dédiée dont le nom finit par `_test` :
@@ -127,7 +145,6 @@ npm run test:coverage   # + couverture par fichier
 ```
 
 ## 🚀 Roadmap
-- Sync automatique NVD/CVE
 - Alertes email / Slack ? / Discord ? / ???
 - RBAC multi-utilisateurs
 

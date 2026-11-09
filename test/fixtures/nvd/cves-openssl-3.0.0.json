@@ -1,0 +1,920 @@
+{
+  "resultsPerPage": 4,
+  "startIndex": 0,
+  "totalResults": 4,
+  "format": "NVD_CVE",
+  "version": "2.0",
+  "timestamp": "2026-11-09T11:05:12.637",
+  "vulnerabilities": [
+    {
+      "cve": {
+        "id": "CVE-2009-1390",
+        "published": "2009-06-16T21:00:00.343",
+        "lastModified": "2026-06-16T23:07:11.243",
+        "vulnStatus": "Modified",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "Mutt 1.5.19, when linked against (1) OpenSSL (mutt_ssl.c) or (2) GnuTLS (mutt_ssl_gnutls.c), allows connections when only one TLS certificate in the chain is accepted instead of verifying the entire chain, which allows remote attackers to spoof trusted servers via a man-in-the-middle attack."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV2": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "2.0",
+                "vectorString": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+                "baseScore": 6.8,
+                "accessVector": "NETWORK",
+                "accessComplexity": "MEDIUM",
+                "authentication": "NONE",
+                "confidentialityImpact": "PARTIAL",
+                "integrityImpact": "PARTIAL",
+                "availabilityImpact": "PARTIAL"
+              },
+              "baseSeverity": "MEDIUM",
+              "exploitabilityScore": 8.6,
+              "impactScore": 6.4,
+              "acInsufInfo": false,
+              "obtainAllPrivilege": false,
+              "obtainUserPrivilege": true,
+              "obtainOtherPrivilege": false,
+              "userInteractionRequired": true
+            }
+          ]
+        },
+        "configurations": [
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:mutt:mutt:1.5.19:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "89C33B31-B9BC-4E43-8221-219380B4B682"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "DDA1CA86-1405-4C25-9BC2-5A5E6A76B911"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:a:gnu:gnutls:*:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "2745A1E0-C586-4686-A5AC-C82ABE726D5C"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2021-4044",
+        "published": "2021-12-14T19:15:07.807",
+        "lastModified": "2026-06-17T04:18:56.683",
+        "vulnStatus": "Modified",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "Internally libssl in OpenSSL calls X509_verify_cert() on the client side to verify a certificate supplied by a server. That function may return a negative return value to indicate an internal error (for example out of memory). Such a negative return value is mishandled by OpenSSL and will cause an IO function (such as SSL_connect() or SSL_do_handshake()) to not indicate success and a subsequent call to SSL_get_error() to return the value SSL_ERROR_WANT_RETRY_VERIFY. This return value is only supposed to be returned by OpenSSL if the application has previously called SSL_CTX_set_cert_verify_callback(). Since most applications do not do this the SSL_ERROR_WANT_RETRY_VERIFY return value from SSL_get_error() will be totally unexpected and applications may not behave correctly as a result. The exact behaviour will depend on the application but it could result in crashes, infinite loops or other similar incorrect responses. This issue is made more serious in combination with a separate bug in OpenSSL 3.0 that will cause X509_verify_cert() to indicate an internal error when processing a certificate chain. This will occur where a certificate does not include the Subject Alternative Name extension but where a Certificate Authority has enforced name constraints. This issue can occur even with valid chains. By combining the two issues an attacker could induce incorrect, application dependent behaviour. Fixed in OpenSSL 3.0.1 (Affected 3.0.0)."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "3.1",
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                "baseScore": 7.5,
+                "baseSeverity": "HIGH",
+                "attackVector": "NETWORK",
+                "attackComplexity": "LOW",
+                "privilegesRequired": "NONE",
+                "userInteraction": "NONE",
+                "scope": "UNCHANGED",
+                "confidentialityImpact": "NONE",
+                "integrityImpact": "NONE",
+                "availabilityImpact": "HIGH"
+              },
+              "exploitabilityScore": 3.9,
+              "impactScore": 3.6
+            }
+          ],
+          "cvssMetricV2": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "2.0",
+                "vectorString": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+                "baseScore": 5,
+                "accessVector": "NETWORK",
+                "accessComplexity": "LOW",
+                "authentication": "NONE",
+                "confidentialityImpact": "NONE",
+                "integrityImpact": "NONE",
+                "availabilityImpact": "PARTIAL"
+              },
+              "baseSeverity": "MEDIUM",
+              "exploitabilityScore": 10,
+              "impactScore": 2.9,
+              "acInsufInfo": false,
+              "obtainAllPrivilege": false,
+              "obtainUserPrivilege": false,
+              "obtainOtherPrivilege": false,
+              "userInteractionRequired": false
+            }
+          ]
+        },
+        "configurations": [
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
+                    "versionEndExcluding": "1.0.2",
+                    "matchCriteriaId": "D53A6288-46D2-452F-95DA-ADA3A55544E5"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:openssl:openssl:1.1.0:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "73104834-5810-48DD-9B97-549D223853F1"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:openssl:openssl:3.0.0:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "5D1E839A-4780-412E-9F02-DD3029A0B8EF"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:cloud_backup:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "5C2089EE-5D7F-47EC-8EA5-0F69790564C4"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:e-series_performance_analyzer:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "24B8DB06-590A-4008-B0AB-FCD1401C77C6"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:ontap_select_deploy_administration_utility:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "E7CF3019-975D-40BB-A8A4-894E62BD3797"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:snapcenter:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "BDFB1169-41A0-4A86-8E4F-FDA9730B1E94"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:a250_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "1236B66D-EB11-4324-929F-E2B86683C3C7"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:a250:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "281DFC67-46BB-4FC2-BE03-3C65C9311F65"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:500f_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "ECF32BB1-9A58-4821-AE49-5D5C8200631F"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:500f:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "F21DE67F-CDFD-4D36-9967-633CD0240C6F"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:h500s_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "7FFF7106-ED78-49BA-9EC5-B889E3685D53"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:h500s:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "E63D8B0F-006E-4801-BF9D-1C001BBFB4F9"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:h700s_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "56409CEC-5A1E-4450-AA42-641E459CC2AF"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:h700s:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "B06F4839-D16A-4A61-9BB5-55B13F41E47F"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:h300e_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "108A2215-50FB-4074-94CF-C130FA14566D"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:h300e:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "7AFC73CE-ABB9-42D3-9A71-3F5BC5381E0E"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:h500e_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "32F0B6C0-F930-480D-962B-3F4EFDCC13C7"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:h500e:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "803BC414-B250-4E3A-A478-A3881340D6B8"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:h700e_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "0FEB3337-BFDE-462A-908B-176F92053CEC"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:h700e:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "736AEAE9-782B-4F71-9893-DED53367E102"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:h410s_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "D0B4AD8A-F172-4558-AEC6-FF424BA2D912"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:h410s:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "8497A4C9-8474-4A62-8331-3FE862ED4098"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:h410c_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "234DEFE0-5CE5-4B0A-96B8-5D227CB8ED31"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:h410c:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "CDDF61B7-EC5C-467C-B710-B89F502CD04F"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:h300s_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "6770B6C3-732E-4E22-BF1C-2D2FD610061C"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:h300s:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "9F9C8C20-42EB-4AB5-BD97-212DEB070C43"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:nodejs:node.js:*:*:*:*:-:*:*:*",
+                    "versionStartIncluding": "17.0.0",
+                    "versionEndExcluding": "17.3.0",
+                    "matchCriteriaId": "EF176509-5AA8-4644-84E5-051964AECCE5"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2022-0778",
+        "published": "2022-03-15T17:15:08.513",
+        "lastModified": "2026-10-14T13:17:14.377",
+        "vulnStatus": "Modified",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "The BN_mod_sqrt() function, which computes a modular square root, contains a bug that can cause it to loop forever for non-prime moduli. Internally this function is used when parsing certificates that contain elliptic curve public keys in compressed form or explicit elliptic curve parameters with a base point encoded in compressed form. It is possible to trigger the infinite loop by crafting a certificate that has invalid explicit curve parameters. Since certificate parsing happens prior to verification of the certificate signature, any process that parses an externally supplied certificate may thus be subject to a denial of service attack. The infinite loop can also be reached when parsing crafted private keys as they can contain explicit elliptic curve parameters. Thus vulnerable situations include: - TLS clients consuming server certificates - TLS servers consuming client certificates - Hosting providers taking certificates or private keys from customers - Certificate authorities parsing certification requests from subscribers - Anything else which parses ASN.1 elliptic curve parameters Also any other applications that use the BN_mod_sqrt() where the attacker can control the parameter values are vulnerable to this DoS issue. In the OpenSSL 1.0.2 version the public key is not parsed during initial parsing of the certificate which makes it slightly harder to trigger the infinite loop. However any operation which requires the public key from the certificate will trigger the infinite loop. In particular the attacker can use a self-signed certificate to trigger the loop during verification of the certificate signature. This issue affects OpenSSL versions 1.0.2, 1.1.1 and 3.0. It was addressed in the releases of 1.1.1n and 3.0.2 on the 15th March 2022. Fixed in OpenSSL 3.0.2 (Affected 3.0.0,3.0.1). Fixed in OpenSSL 1.1.1n (Affected 1.1.1-1.1.1m). Fixed in OpenSSL 1.0.2zd (Affected 1.0.2-1.0.2zc)."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "3.1",
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                "baseScore": 7.5,
+                "baseSeverity": "HIGH",
+                "attackVector": "NETWORK",
+                "attackComplexity": "LOW",
+                "privilegesRequired": "NONE",
+                "userInteraction": "NONE",
+                "scope": "UNCHANGED",
+                "confidentialityImpact": "NONE",
+                "integrityImpact": "NONE",
+                "availabilityImpact": "HIGH"
+              },
+              "exploitabilityScore": 3.9,
+              "impactScore": 3.6
+            }
+          ],
+          "cvssMetricV2": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "2.0",
+                "vectorString": "AV:N/AC:L/Au:N/C:N/I:N/A:P",
+                "baseScore": 5,
+                "accessVector": "NETWORK",
+                "accessComplexity": "LOW",
+                "authentication": "NONE",
+                "confidentialityImpact": "NONE",
+                "integrityImpact": "NONE",
+                "availabilityImpact": "PARTIAL"
+              },
+              "baseSeverity": "MEDIUM",
+              "exploitabilityScore": 10,
+              "impactScore": 2.9,
+              "acInsufInfo": false,
+              "obtainAllPrivilege": false,
+              "obtainUserPrivilege": false,
+              "obtainOtherPrivilege": false,
+              "userInteractionRequired": false
+            }
+          ]
+        },
+        "configurations": [
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "1.0.2",
+                    "versionEndExcluding": "1.0.2zd",
+                    "matchCriteriaId": "F3BC593C-D7BB-42A8-9488-BE910A8C3B68"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "1.1.0",
+                    "versionEndExcluding": "1.1.1n",
+                    "matchCriteriaId": "16D7B14C-9D04-40AC-9FCE-73D3DF468DB2"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "3.0.0",
+                    "versionEndExcluding": "3.0.2",
+                    "matchCriteriaId": "E7225F27-E0BC-4716-AF68-8D68EE90F7CE"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:debian:debian_linux:9.0:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "DEECE5FC-CACF-4496-A3E7-164736409252"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:debian:debian_linux:10.0:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "07B237A9-69A3-4A9C-9DA0-4E06BD37AE73"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:debian:debian_linux:11.0:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "FA6FEEC2-9F11-4643-8827-749718254FED"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:cloud_volumes_ontap_mediator:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "280AA828-6FA9-4260-8EC1-019423B966E1"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:clustered_data_ontap:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "1FE996B1-6951-4F85-AA58-B99A379D2163"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:clustered_data_ontap_antivirus_connector:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "62347994-1353-497C-9C4A-D5D8D95F67E8"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:santricity_smi-s_provider:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "361B791A-D336-4431-8F68-8135BEFFAEA2"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:netapp:storagegrid:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "8ADFF451-740F-4DBA-BD23-3881945D3E40"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:a250_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "1236B66D-EB11-4324-929F-E2B86683C3C7"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:a250:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "281DFC67-46BB-4FC2-BE03-3C65C9311F65"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "AND",
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:netapp:500f_firmware:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "ECF32BB1-9A58-4821-AE49-5D5C8200631F"
+                  }
+                ]
+              },
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": false,
+                    "criteria": "cpe:2.3:h:netapp:500f:-:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "F21DE67F-CDFD-4D36-9967-633CD0240C6F"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:fedoraproject:fedora:34:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "A930E247-0B43-43CB-98FF-6CE7B8189835"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:o:fedoraproject:fedora:36:*:*:*:*:*:*:*",
+                    "matchCriteriaId": "5C675112-476C-4D7C-BCB9-A2FB2D0BC9FD"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:tenable:nessus:*:*:*:*:*:*:*:*",
+                    "versionEndExcluding": "8.15.4",
+                    "matchCriteriaId": "1188273E-D496-41A9-AE16-75C0EB70EFB2"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:tenable:nessus:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "10.0.0",
+                    "versionEndExcluding": "10.1.2",
+                    "matchCriteriaId": "644DD241-261E-41A3-86B5-C0834502EA81"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:mariadb:mariadb:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "10.2.0",
+                    "versionEndExcluding": "10.2.42",
+                    "matchCriteriaId": "49CFE4A3-DDFC-4801-8C68-510EB5CFBC36"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:mariadb:mariadb:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "10.3.0",
+                    "versionEndExcluding": "10.3.33",
+                    "matchCriteriaId": "F8EB13E9-AFD7-4E82-A471-61201460CAC4"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:mariadb:mariadb:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "10.4.0",
+                    "versionEndExcluding": "10.4.23",
+                    "matchCriteriaId": "3EFE42EF-DB07-4DD4-A40C-6DD6A7D1E6DC"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:mariadb:mariadb:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "10.5.0",
+                    "versionEndExcluding": "10.5.14",
+                    "matchCriteriaId": "E3C63CE6-6B86-4C48-8D30-DC74CA83C5EC"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:mariadb:mariadb:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "10.6.0",
+                    "versionEndExcluding": "10.6.6",
+                    "matchCriteriaId": "09ADA35C-125F-4970-ACB7-36A9CC3516BF"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:mariadb:mariadb:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "10.7.0",
+                    "versionEndExcluding": "10.7.2",
+                    "matchCriteriaId": "E0435104-B0F9-4997-A769-36821689DF45"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:nodejs:node.js:*:*:*:*:-:*:*:*",
+                    "versionStartIncluding": "12.0.0",
+                    "versionEndIncluding": "12.12.0",
+                    "matchCriteriaId": "564ED5C8-50D7-413A-B88E-E62B6C07336A"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:nodejs:node.js:*:*:*:*:lts:*:*:*",
+                    "versionStartIncluding": "12.13.0",
+                    "versionEndExcluding": "12.22.11",
+                    "matchCriteriaId": "274A9803-2997-4E65-BDB0-8B5C23120CD1"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:nodejs:node.js:*:*:*:*:-:*:*:*",
+                    "versionStartExcluding": "14.0.0",
+                    "versionEndIncluding": "14.14.0",
+                    "matchCriteriaId": "05678B4E-5F27-4096-8E9B-38B84A7E7793"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:nodejs:node.js:*:*:*:*:lts:*:*:*",
+                    "versionStartIncluding": "14.15.0",
+                    "versionEndExcluding": "14.19.1",
+                    "matchCriteriaId": "CECEE1EE-B2A2-476B-82AE-48DFF6F1729A"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:nodejs:node.js:*:*:*:*:-:*:*:*",
+                    "versionStartExcluding": "16.0.0",
+                    "versionEndIncluding": "16.12.0",
+                    "matchCriteriaId": "DC9C8402-7102-4BCF-8A49-CFDF1C59B92F"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:nodejs:node.js:*:*:*:*:lts:*:*:*",
+                    "versionStartIncluding": "16.13.0",
+                    "versionEndExcluding": "16.14.2",
+                    "matchCriteriaId": "3DF34038-6987-4196-B5E7-FF5656D1EE5A"
+                  },
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:nodejs:node.js:*:*:*:*:-:*:*:*",
+                    "versionStartExcluding": "17.0.0",
+                    "versionEndExcluding": "17.7.2",
+                    "matchCriteriaId": "0AD8D8BB-702C-4FDF-A0A2-872744B8BF68"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "cve": {
+        "id": "CVE-2022-3996",
+        "published": "2022-12-13T16:15:22.007",
+        "lastModified": "2026-06-17T05:00:44.367",
+        "vulnStatus": "Modified",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "If an X.509 certificate contains a malformed policy constraint and\npolicy processing is enabled, then a write lock will be taken twice\nrecursively.  On some operating systems (most widely: Windows) this\nresults in a denial of service when the affected process hangs.  Policy\nprocessing being enabled on a publicly facing server is not considered\nto be a common setup.\n\nPolicy processing is enabled by passing the `-policy'\nargument to the command line utilities or by calling the\n`X509_VERIFY_PARAM_set1_policies()' function.\n\nUpdate (31 March 2023): The description of the policy processing enablement\nwas corrected based on CVE-2023-0466."
+          }
+        ],
+        "metrics": {
+          "cvssMetricV31": [
+            {
+              "source": "nvd@nist.gov",
+              "type": "Primary",
+              "cvssData": {
+                "version": "3.1",
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                "baseScore": 7.5,
+                "baseSeverity": "HIGH",
+                "attackVector": "NETWORK",
+                "attackComplexity": "LOW",
+                "privilegesRequired": "NONE",
+                "userInteraction": "NONE",
+                "scope": "UNCHANGED",
+                "confidentialityImpact": "NONE",
+                "integrityImpact": "NONE",
+                "availabilityImpact": "HIGH"
+              },
+              "exploitabilityScore": 3.9,
+              "impactScore": 3.6
+            }
+          ]
+        },
+        "configurations": [
+          {
+            "nodes": [
+              {
+                "operator": "OR",
+                "negate": false,
+                "cpeMatch": [
+                  {
+                    "vulnerable": true,
+                    "criteria": "cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*",
+                    "versionStartIncluding": "3.0.0",
+                    "versionEndIncluding": "3.0.7",
+                    "matchCriteriaId": "26EF8A48-B8E5-4D4D-8054-445D65171EAC"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

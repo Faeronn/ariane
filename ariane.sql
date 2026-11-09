@@ -18,6 +18,32 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------
+-- Table structure for cpe_cve
+-- ----------------------------
+DROP TABLE IF EXISTS `cpe_cve`;
+CREATE TABLE `cpe_cve`  (
+  `cpeName` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `cveID` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  PRIMARY KEY (`cpeName`, `cveID`) USING BTREE,
+  INDEX `idx_cveID`(`cveID`) USING BTREE,
+  CONSTRAINT `cpe_cve_ibfk_1` FOREIGN KEY (`cveID`) REFERENCES `cve` (`cveID`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for cve
+-- ----------------------------
+DROP TABLE IF EXISTS `cve`;
+CREATE TABLE `cve`  (
+  `cveID` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL,
+  `cvssScore` decimal(3, 1) NULL DEFAULT NULL,
+  `severity` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
+  `published` datetime NULL DEFAULT NULL,
+  `lastModified` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`cveID`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for domain
 -- ----------------------------
 DROP TABLE IF EXISTS `domain`;
@@ -107,6 +133,7 @@ CREATE TABLE `software_cpe`  (
   `cpeName` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
   `status` enum('pending','matched','unmatched') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT 'pending',
   `lastCheckedAt` datetime NULL DEFAULT NULL,
+  `cvesCheckedAt` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`softwareCpeID`) USING BTREE,
   UNIQUE INDEX `uniq_software`(`vendor`, `name`, `version`) USING BTREE,
   INDEX `idx_status`(`status`, `lastCheckedAt`) USING BTREE,

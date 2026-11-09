@@ -11,6 +11,7 @@ router.use(authenticateUser);
 // DATETIME columns hold UTC: return them as ISO 8601 strings instead of driver-local Dates.
 const isoUtc = column => `DATE_FORMAT(${column}, '%Y-%m-%dT%H:%i:%sZ')`;
 const LATEST_SNAPSHOT = 'SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = m.machineID';
+const LATEST_SNAPSHOT_OF = 'SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?';
 
 router.get('/', async (request, response) => {
 	try {
@@ -44,6 +45,41 @@ router.get('/:id', async (request, response) => {
 	} catch (error) {
 		request.log.error(error);
 		return response.status(500).send({ message: 'Error : Unable to retrieve machine.' });
+	}
+});
+
+// CVEs affecting the latest snapshot: software => software_cpe => cpe_cve => cve, one entry per CVE
+// with every affected software, highest CVSS first. Software without a CPE yet is only counted.
+router.get('/:id/vulns', async (request, response) => {
+	const machineID = parseMachineID(request.params.id);
+	if (!machineID) return response.status(400).send({ message: 'Error : Invalid machine id.' });
+
+	try {
+		const machines = await database.query('SELECT machineID FROM machines WHERE machineID = ?', [machineID]);
+		if (machines.length === 0) return response.status(404).send({ message: 'Error : Machine not found.' });
+
+		const rows = await database.query(`SELECT c.cveID, c.severity, c.cvssScore, ${isoUtc('c.published')} AS published, s.name, s.version
+			FROM installed_software s
+			INNER JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version AND sc.status = 'matched'
+			INNER JOIN cpe_cve cc ON cc.cpeName = sc.cpeName
+			INNER JOIN cve c ON c.cveID = cc.cveID
+			WHERE s.snapshotID = (${LATEST_SNAPSHOT_OF})
+			ORDER BY c.cvssScore IS NULL, c.cvssScore DESC, c.cveID, s.name, s.version`, [machineID]);
+		const [{ unmapped }] = await database.query(`SELECT COUNT(*) AS unmapped
+			FROM installed_software s
+			LEFT JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
+			WHERE s.snapshotID = (${LATEST_SNAPSHOT_OF}) AND (sc.status IS NULL OR sc.status <> 'matched')`, [machineID]);
+
+		const vulnerabilities = new Map();
+		for (const { cveID, severity, cvssScore, published, name, version } of rows) {
+			if (!vulnerabilities.has(cveID)) vulnerabilities.set(cveID, { cveID, severity, cvssScore: cvssScore === null ? undefined : Number(cvssScore), published, software: [] });
+			vulnerabilities.get(cveID).software.push({ name, version });
+		}
+
+		return response.status(200).send({ message: 'Vulnerabilities retrieved.', vulnerabilities: [...vulnerabilities.values()], unmappedSoftware: Number(unmapped) });
+	} catch (error) {
+		request.log.error(error);
+		return response.status(500).send({ message: 'Error : Unable to retrieve vulnerabilities.' });
 	}
 });
 
