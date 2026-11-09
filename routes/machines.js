@@ -2,6 +2,7 @@ import authenticateUser from '../middleware/authenticate-user.js';
 import requireRole from '../middleware/require-role.js';
 import sanitizeInput from '../utils/sanitizer.js';
 import database from '../utils/database.js';
+import { machineVulnerabilities, countUnmapped } from '../utils/vulnerabilities.js';
 import { hashToken } from '../utils/jwt.js';
 import crypto from 'node:crypto';
 import express from 'express';
@@ -12,7 +13,6 @@ router.use(authenticateUser);
 // DATETIME columns hold UTC: return them as ISO 8601 strings instead of driver-local Dates.
 const isoUtc = column => `DATE_FORMAT(${column}, '%Y-%m-%dT%H:%i:%sZ')`;
 const LATEST_SNAPSHOT = 'SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = m.machineID';
-const LATEST_SNAPSHOT_OF = 'SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?';
 // Every route below only sees machines of the caller's organization; another organization's
 // machine answers 404 like an unknown id, so ids never reveal what exists elsewhere.
 
@@ -61,29 +61,8 @@ router.get('/:id/vulns', async (request, response) => {
 		const machines = await database.query('SELECT machineID FROM machines WHERE machineID = ? AND orgID = ?', [machineID, request.user.orgID]);
 		if (machines.length === 0) return response.status(404).send({ message: 'Error : Machine not found.' });
 
-		const rows = await database.query(`SELECT c.cveID, c.severity, c.cvssScore, ${isoUtc('c.published')} AS published, s.name, s.version, sc.versionNormalized
-			FROM installed_software s
-			INNER JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version AND sc.status = 'matched'
-			INNER JOIN cpe_cve cc ON cc.cpeName = sc.cpeName
-			INNER JOIN cve c ON c.cveID = cc.cveID
-			WHERE s.snapshotID = (${LATEST_SNAPSHOT_OF})
-			ORDER BY c.cvssScore IS NULL, c.cvssScore DESC, c.cveID, s.name, s.version`, [machineID]);
-		const [{ unmapped }] = await database.query(`SELECT COUNT(*) AS unmapped
-			FROM installed_software s
-			LEFT JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
-			WHERE s.snapshotID = (${LATEST_SNAPSHOT_OF}) AND (sc.status IS NULL OR sc.status <> 'matched')`, [machineID]);
-
-		// versionNormalized: every affected software was matched on its upstream version only, so a
-		// distribution backport may already fix it. One exact-version match confirms the CVE.
-		const vulnerabilities = new Map();
-		for (const { cveID, severity, cvssScore, published, name, version, versionNormalized } of rows) {
-			if (!vulnerabilities.has(cveID)) vulnerabilities.set(cveID, { cveID, severity, cvssScore: cvssScore === null ? undefined : Number(cvssScore), published, versionNormalized: true, software: [] });
-			const vulnerability = vulnerabilities.get(cveID);
-			vulnerability.versionNormalized &&= Boolean(versionNormalized);
-			vulnerability.software.push({ name, version });
-		}
-
-		return response.status(200).send({ message: 'Vulnerabilities retrieved.', vulnerabilities: [...vulnerabilities.values()], unmappedSoftware: Number(unmapped) });
+		const [vulnerabilities, unmappedSoftware] = await Promise.all([machineVulnerabilities(machineID), countUnmapped(machineID)]);
+		return response.status(200).send({ message: 'Vulnerabilities retrieved.', vulnerabilities, unmappedSoftware });
 	} catch (error) {
 		request.log.error(error);
 		return response.status(500).send({ message: 'Error : Unable to retrieve vulnerabilities.' });
