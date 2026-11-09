@@ -30,7 +30,11 @@ function checkCors(environment, report) {
 	for (const origin of parseOrigins(environment.CORS_ORIGINS).filter(value => !isValidOrigin(value))) report.errors.push(`CORS_ORIGINS: "${origin}" is not an origin like https://dashboard.example.com (no path, no trailing slash).`);
 }
 
-const RULES = [checkRequired, checkMail, checkNvd, checkCors];
+function checkTrustProxy(environment, report) {
+	if (isSet(environment, 'TRUST_PROXY') && !/^\d+$/.test(environment.TRUST_PROXY)) report.errors.push('TRUST_PROXY must be the number of reverse proxies in front of the API (0 or empty when none).');
+}
+
+const RULES = [checkRequired, checkMail, checkNvd, checkCors, checkTrustProxy];
 
 export function validateConfig(environment = process.env) {
 	const report = { errors: [], warnings: [] };

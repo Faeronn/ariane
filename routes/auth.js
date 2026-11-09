@@ -1,6 +1,7 @@
 import { generateAccessToken, generateRefreshToken, hashToken } from '../utils/jwt.js';
 import { sendVerificationEmail } from '../utils/mailer.js';
 import sanitizeInput from '../utils/sanitizer.js';
+import { signinPerIp, signinPerAccount, signupPerIp, verifyPerIp, refreshPerIp } from '../middleware/rate-limit.js';
 import database from '../utils/database.js';
 import crypto from 'node:crypto';
 import express from 'express';
@@ -10,7 +11,7 @@ const router = express.Router();
 const MAX_VERIFY_ATTEMPTS = 5;
 const INVALID_CODE_MESSAGE = 'Error : Invalid verification code.';
 
-router.post('/signin', async (request, response) => {
+router.post('/signin', signinPerIp, signinPerAccount, async (request, response) => {
 	const username = sanitizeInput(request.body.username);
 	const password = sanitizeInput(request.body.password);
 	if (!username || !password) return response.status(400).send({ message: 'Error : Missing credentials.' });
@@ -36,7 +37,7 @@ router.post('/signin', async (request, response) => {
 	}
 });
 
-router.post('/signup', async (request, response) => {
+router.post('/signup', signupPerIp, async (request, response) => {
 	try {
 		const firstname = sanitizeInput(request.body.firstname);
 		const lastname = sanitizeInput(request.body.lastname);
@@ -68,7 +69,7 @@ router.post('/signup', async (request, response) => {
 });
 
 // The code is checked against its own user only, within MAX_VERIFY_ATTEMPTS and before its expiry.
-router.get('/verify', async (request, response) => {
+router.get('/verify', verifyPerIp, async (request, response) => {
 	const username = typeof request.query.username === 'string' ? sanitizeInput(request.query.username).trim() : '';
 	const verificationCode = typeof request.query.code === 'string' ? request.query.code.trim() : '';
 	if (!username || !verificationCode) return response.status(400).send({ message: 'Error : Missing information.' });
@@ -98,7 +99,7 @@ router.get('/verify', async (request, response) => {
 	}
 });
 
-router.post('/refresh', async (request, response) => {
+router.post('/refresh', refreshPerIp, async (request, response) => {
 	const refreshToken = String(sanitizeInput(request.body.refreshToken) ?? '').trim();
 	if (!refreshToken) return response.status(400).send({ message: 'Error : Missing information.' });
 

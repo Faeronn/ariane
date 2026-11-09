@@ -1,5 +1,6 @@
 import mariadb from 'mariadb';
 import { migrate } from '../../utils/migrate.js';
+import { resetRateLimits } from '../../middleware/rate-limit.js';
 
 export const ALLOWED_DOMAIN = 'ariane.test';
 
@@ -50,6 +51,7 @@ export async function globalSetup() {
 
 // Empty every table but the migration history, then re-seed the allowed signup domain.
 export async function reset() {
+	await resetRateLimits();
 	const connection = await connect();
 	try {
 		await forEachTable(connection, name => name !== 'schema_migrations', name => `TRUNCATE TABLE \`${name}\``);

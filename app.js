@@ -18,8 +18,8 @@ const app = express();
 app.disable("x-powered-by");
 const port = process.env.PORT;
 
-//TODO : Security hardening with limiters, IP filters ect
-//Why not using an Interceptor for that
+// Behind a reverse proxy, TRUST_PROXY hops make request.ip (used by the rate limits) the client's.
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY));
 // Inventories outgrow the default 100 kb; the parsed body is then skipped by the global parser.
 app.use('/agents', createJsonBody({ limit: '5mb' }));
 app.use(jsonBody);

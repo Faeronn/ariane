@@ -17,6 +17,7 @@
 		"body-parser": "^2.2.2",
 		"cors": "^2.8.6",
 		"express": "^5.2.1",
+		"express-rate-limit": "^8.7.3",
 		"jsonwebtoken": "^9.0.3",
 		"mariadb": "^3.4.5",
 		"nodemailer": "^8.0.1",
