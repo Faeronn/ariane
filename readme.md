@@ -4,10 +4,12 @@ Outil d’inventaire logiciel et de suivi de vulnérabilités (CVE) pour machine
 ## ✨ Fonctionnalités
 - 🔐 Authentification JWT + Refresh Token
 - 📧 Vérification d’email à l’inscription
+- 🏢 Organisations par domaine email, rôles admin / viewer
 - 🖥️ Gestion d’une flotte de machines (enrôlement, clé agent par machine)
-- 🧠 Normalisation logiciel → CPE → CVE (NVD API 2.0)
-- 🚨 Détection des vulnérabilités par version installée
-- 📊 [ W.I.P ] API REST prête pour dashboard
+- 🧠 Normalisation logiciel → CPE → CVE (NVD API 2.0), alias des logiciels courants
+- 🚨 Détection des vulnérabilités par version installée et par plateforme
+- 🔔 Alertes des nouvelles CVE par email, Slack ou Discord
+- 📊 API REST prête pour dashboard (résumé de flotte)
 
 ## 🏗️ Stack technique
 
@@ -100,9 +102,10 @@ Seules les URL de webhook Slack (`https://hooks.slack.com/services/…`) et Disc
 | GET     | /machines             | membre | Liste des machines           |
 | GET     | /machines/:id         | membre | Détails machine              |
 | GET     | /machines/:id/vulns   | membre | Vulnérabilités détectées     |
+| GET     | /fleet/summary        | membre | Résumé de flotte : machines (actives, révoquées, sans nouvelles depuis 7 jours), CVE par sévérité, machines touchées, 10 CVE les plus répandues, logiciels sans CPE |
 | GET     | /software/unmapped    | membre | Logiciels sans CPE des machines actives (dernier snapshot), du plus répandu au moins répandu : ce qui échappe à la détection |
 
-Les routes `/machines`, `/users`, `/software` et `/organization` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
+Les routes `/machines`, `/users`, `/software`, `/organization` et `/fleet` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
 
 Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et `version` facultatifs) :
 ```json
@@ -159,8 +162,8 @@ npm run test:coverage   # + couverture par fichier
 ```
 
 ## 🚀 Roadmap
-- Alertes email / Slack ? / Discord ? / ???
-- RBAC multi-utilisateurs
+- Agent de collecte (Linux / Windows)
+- Dashboard web
 
 ## 🤝 Contribution
 Promis j'essaie de vous répondre avant l'année prochaine.

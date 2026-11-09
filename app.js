@@ -8,6 +8,7 @@ import agentsRouter from './routes/agents.js';
 import usersRouter from './routes/users.js';
 import softwareRouter from './routes/software.js';
 import organizationRouter from './routes/organization.js';
+import fleetRouter from './routes/fleet.js';
 import authRouter from './routes/auth.js';
 import { startResolveCpeJob } from './jobs/resolve-cpe.js';
 import { startSyncCvesJob } from './jobs/sync-cves.js';
@@ -55,6 +56,7 @@ app.use('/machines', corsAllowlist, machinesRouter);
 app.use('/users', corsAllowlist, usersRouter);
 app.use('/software', corsAllowlist, softwareRouter);
 app.use('/organization', corsAllowlist, organizationRouter);
+app.use('/fleet', corsAllowlist, fleetRouter);
 app.use('/agents', agentsRouter);
 
 app.use(notFound);
