@@ -83,6 +83,10 @@ Chaque domaine email autorisé (table `domain`) appartient à une organisation :
 |---------|------------------|--------|-------------|
 | GET     | /users           | membre | Membres de l’organisation |
 | PATCH   | /users/:id/role  | admin  | `{ "role": "admin" \| "viewer" }` ; une organisation garde toujours au moins un admin (sinon 409) |
+| GET     | /organization/alerts | membre | Réglages d’alerte (URL du webhook masquée pour les viewers) |
+| PUT     | /organization/alerts | admin  | `{ "minSeverity": "LOW" \| "MEDIUM" \| "HIGH" \| "CRITICAL", "emailEnabled": true, "webhookKind": "slack" \| "discord" \| null, "webhookUrl": "https://hooks.slack.com/services/…" }` |
+
+Seules les URL de webhook Slack (`https://hooks.slack.com/services/…`) et Discord (`https://discord.com/api/webhooks/…`) sont acceptées : l’API n’envoie jamais de requête vers une autre adresse.
 
 #### 🖥️ Inventaire
 
@@ -96,7 +100,7 @@ Chaque domaine email autorisé (table `domain`) appartient à une organisation :
 | GET     | /machines/:id/vulns   | membre | Vulnérabilités détectées     |
 | GET     | /software/unmapped    | membre | Logiciels sans CPE des machines actives (dernier snapshot), du plus répandu au moins répandu : ce qui échappe à la détection |
 
-Les routes `/machines`, `/users` et `/software` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
+Les routes `/machines`, `/users`, `/software` et `/organization` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
 
 Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et `version` facultatifs) :
 ```json
