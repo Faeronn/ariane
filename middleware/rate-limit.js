@@ -36,3 +36,9 @@ export const signinPerIp = createRateLimit({ windowMs: 15 * MINUTE, limit: 50 })
 export const signupPerIp = createRateLimit({ windowMs: 60 * MINUTE, limit: 5 });
 export const verifyPerIp = createRateLimit({ windowMs: 15 * MINUTE, limit: 10 });
 export const refreshPerIp = createRateLimit({ windowMs: 15 * MINUTE, limit: 30 });
+
+// A looping or stolen agent key cannot flood ingestion; keyed by the authenticated machine.
+export const inventoryPerMachine = createRateLimit({ windowMs: 60 * MINUTE, limit: 30, keyGenerator: request => `machine:${request.machine.machineID}` });
+
+// Last line against floods on any route, mounted before everything else.
+export const globalPerIp = createRateLimit({ windowMs: 15 * MINUTE, limit: 600 });

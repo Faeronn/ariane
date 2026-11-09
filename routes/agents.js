@@ -1,5 +1,6 @@
 import authenticateAgent from '../middleware/authenticate-agent.js';
 import { validateInventory } from '../utils/inventory.js';
+import { inventoryPerMachine } from '../middleware/rate-limit.js';
 import database from '../utils/database.js';
 import express from 'express';
 const router = express.Router();
@@ -7,7 +8,7 @@ const router = express.Router();
 router.use(authenticateAgent);
 
 // Store one inventory snapshot of the calling machine, atomically with its software rows.
-router.post('/inventory', async (request, response) => {
+router.post('/inventory', inventoryPerMachine, async (request, response) => {
 	const { errors, inventory } = validateInventory(request.body);
 	if (errors) return response.status(400).send({ message: 'Error : Invalid inventory.', errors });
 

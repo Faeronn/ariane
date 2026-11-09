@@ -1,6 +1,6 @@
 import { describe, it, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { api, PASSWORD } from './helpers/fixtures.js';
+import { api, PASSWORD, createSignedInUser } from './helpers/fixtures.js';
 import { startServer } from './helpers/server.js';
 import { reset } from './helpers/database.js';
 
@@ -57,4 +57,27 @@ describe('auth rate limits', () => {
 			assert.equal(blocked.status, 429);
 		});
 	}
+});
+
+describe('agent and global rate limits', () => {
+	it('stops a machine after 30 inventories per hour while another machine is still accepted', async () => {
+		const { accessToken: token } = await createSignedInUser(server.baseUrl);
+		const enroll = hostname => api(server.baseUrl, 'POST', '/machines', { token, body: { hostname } }).then(({ body }) => body.apiKey);
+		const [looping, healthy] = [await enroll('loop-01'), await enroll('ok-01')];
+		const push = apiKey => api(server.baseUrl, 'POST', '/agents/inventory', { headers: { 'X-Agent-Key': apiKey }, body: { osFamily: 'linux', software: [] } });
+
+		const accepted = await statuses(30, () => push(looping));
+		assert.ok(accepted.every(status => status === 201));
+		const blocked = await push(looping);
+		assert.equal(blocked.status, 429);
+		const other = await push(healthy);
+		assert.equal(other.status, 201);
+	});
+
+	it('answers 429 on any route once an address passes the global ceiling', async () => {
+		const answered = await statuses(600, () => api(server.baseUrl, 'GET', '/nowhere'));
+		assert.ok(answered.every(status => status === 404));
+		const blocked = await api(server.baseUrl, 'GET', '/machines');
+		assert.equal(blocked.status, 429);
+	});
 });

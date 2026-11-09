@@ -1,5 +1,6 @@
 import errorHandler from './middleware/error-handler.js';
 import corsAllowlist from './middleware/cors.js';
+import { globalPerIp } from './middleware/rate-limit.js';
 import notFound from './middleware/not-found.js';
 import jsonBody, { createJsonBody } from './middleware/json-body.js';
 import machinesRouter from './routes/machines.js';
@@ -20,6 +21,8 @@ const port = process.env.PORT;
 
 // Behind a reverse proxy, TRUST_PROXY hops make request.ip (used by the rate limits) the client's.
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY));
+app.use(globalPerIp);
+
 // Inventories outgrow the default 100 kb; the parsed body is then skipped by the global parser.
 app.use('/agents', createJsonBody({ limit: '5mb' }));
 app.use(jsonBody);
