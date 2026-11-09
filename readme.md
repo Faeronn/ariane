@@ -96,6 +96,20 @@ npm run dev
 
 Les routes `/machines` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée.
 
+Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et `version` facultatifs) :
+```json
+{
+  "hostname": "web-01",
+  "osFamily": "linux",
+  "osVersion": "Debian 12",
+  "collectedAt": "2026-11-09T10:00:00Z",
+  "software": [
+    { "name": "openssl", "version": "3.0.0", "vendor": "openssl" }
+  ]
+}
+```
+Réponse `201 { "message": "Inventory received.", "snapshotID": 42 }`. Chaque envoi crée un snapshot ; l’état d’une machine est son dernier snapshot.
+
 
 ## 🧪 Tests
 Les tests tournent sur une base MariaDB dédiée dont le nom finit par `_test` :

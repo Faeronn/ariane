@@ -28,6 +28,36 @@ CREATE TABLE `domain`  (
 ) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
+-- Table structure for installed_software
+-- ----------------------------
+DROP TABLE IF EXISTS `installed_software`;
+CREATE TABLE `installed_software`  (
+  `softwareID` int NOT NULL AUTO_INCREMENT,
+  `snapshotID` int NOT NULL,
+  `vendor` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `version` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
+  PRIMARY KEY (`softwareID`) USING BTREE,
+  INDEX `idx_snapshotID`(`snapshotID`) USING BTREE,
+  INDEX `idx_name_version`(`name`, `version`) USING BTREE,
+  CONSTRAINT `installed_software_ibfk_1` FOREIGN KEY (`snapshotID`) REFERENCES `inventory_snapshot` (`snapshotID`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for inventory_snapshot
+-- ----------------------------
+DROP TABLE IF EXISTS `inventory_snapshot`;
+CREATE TABLE `inventory_snapshot`  (
+  `snapshotID` int NOT NULL AUTO_INCREMENT,
+  `machineID` int NOT NULL,
+  `collectedAt` datetime NOT NULL,
+  `receivedAt` datetime NOT NULL,
+  PRIMARY KEY (`snapshotID`) USING BTREE,
+  INDEX `idx_machineID`(`machineID`) USING BTREE,
+  CONSTRAINT `inventory_snapshot_ibfk_1` FOREIGN KEY (`machineID`) REFERENCES `machines` (`machineID`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for machines
 -- ----------------------------
 DROP TABLE IF EXISTS `machines`;

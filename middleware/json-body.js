@@ -1,12 +1,18 @@
 import express from 'express';
 
-const parseJson = express.json();
+// express.json() with JSON answers instead of the default HTML errors:
+// 413 when the body exceeds `options.limit`, 400 when it is malformed.
+export function createJsonBody(options) {
+	const parseJson = express.json(options);
 
-// express.json() with a 400 JSON answer on malformed bodies instead of the default HTML error.
-export default function jsonBody(request, response, next) {
-	parseJson(request, response, error => {
-		if (error) return response.status(400).send({ message: 'Error : Bad JSON formatting.' });
+	return function jsonBody(request, response, next) {
+		parseJson(request, response, error => {
+			if (error?.type === 'entity.too.large') return response.status(413).send({ message: 'Error : Payload too large.' });
+			if (error) return response.status(400).send({ message: 'Error : Bad JSON formatting.' });
 
-		return next();
-	});
+			return next();
+		});
+	};
 }
+
+export default createJsonBody();

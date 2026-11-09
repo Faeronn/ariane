@@ -1,6 +1,7 @@
 import errorHandler from './middleware/error-handler.js';
-import jsonBody from './middleware/json-body.js';
+import jsonBody, { createJsonBody } from './middleware/json-body.js';
 import machinesRouter from './routes/machines.js';
+import agentsRouter from './routes/agents.js';
 import authRouter from './routes/auth.js';
 import logger from './utils/logger.js';
 import pinoHttp from 'pino-http';
@@ -14,6 +15,8 @@ const port = process.env.PORT;
 
 //TODO : Security hardening with limiters, IP filters ect
 //Why not using an Interceptor for that
+// Inventories outgrow the default 100 kb; the parsed body is then skipped by the global parser.
+app.use('/agents', createJsonBody({ limit: '5mb' }));
 app.use(jsonBody);
 
 app.use(
@@ -35,6 +38,7 @@ app.use(
 // Routes
 app.use('/auth', cors(), authRouter);
 app.use('/machines', cors(), machinesRouter);
+app.use('/agents', agentsRouter);
 
 app.use(errorHandler);
 
