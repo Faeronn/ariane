@@ -16,6 +16,7 @@ function checkMail(environment, report) {
 		return;
 	}
 	for (const name of MAIL_REQUIRED.filter(variable => !isSet(environment, variable))) report.errors.push(`${name} is not set (or set MAIL_TRANSPORT=json outside production).`);
+	if (isSet(environment, 'MAIL_SECURE') && !['true', 'false'].includes(environment.MAIL_SECURE)) report.errors.push('MAIL_SECURE must be true (implicit TLS, port 465) or false (STARTTLS required).');
 }
 
 function checkNvd(environment, report) {

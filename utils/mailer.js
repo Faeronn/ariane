@@ -1,23 +1,31 @@
 import nodemailer from 'nodemailer';
 import logger from './logger.js';
 
+// SMTP options: implicit TLS when MAIL_SECURE=true (port 465), otherwise STARTTLS is required, so
+// credentials and codes never travel in clear text. OAuth is not supported.
+export function buildTransportOptions(environment = process.env) {
+	const secure = environment.MAIL_SECURE === 'true';
+	return {
+		host: environment.MAIL_HOST,
+		port: Number(environment.MAIL_PORT),
+		secure,
+		requireTLS: !secure,
+		auth: { user: environment.MAIL_USER, pass: environment.MAIL_PASS }
+	};
+}
+
+export const senderAddress = (environment = process.env) => environment.MAIL_FROM || environment.MAIL_USER;
+
 // MAIL_TRANSPORT=json renders mails to JSON instead of sending them (tests).
 const useJsonTransport = process.env.MAIL_TRANSPORT === 'json';
 // eslint-disable-next-line sonarjs/no-clear-text-protocols -- the JSON transport never opens a network connection
 const jsonTransporter = useJsonTransport ? nodemailer.createTransport({ jsonTransport: true }) : undefined;
-const transporter = jsonTransporter ?? nodemailer.createTransport({
-	host: process.env.MAIL_HOST,
-	port: process.env.MAIL_PORT,
-	secure: false, //TODO : Handle OAuth
-	auth: {
-		user: process.env.MAIL_USER,
-		pass: process.env.MAIL_PASS
-	}
-});
+// eslint-disable-next-line sonarjs/no-clear-text-protocols -- TLS is enforced by buildTransportOptions: implicit TLS or requireTLS (STARTTLS)
+const transporter = jsonTransporter ?? nodemailer.createTransport(buildTransportOptions());
 
 async function sendVerificationEmail(to, verificationCode) {
 	const mailOptions = {
-		from: process.env.MAIL_USER,
+		from: senderAddress(),
 		to: to,
 		subject: 'Verifiez votre adresse Mail',
 		html: `<div style="display:flex; align-items: center; justify-content: center; flex-direction: column; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
@@ -41,6 +49,7 @@ async function sendVerificationEmail(to, verificationCode) {
 	try {
 		const info = await transporter.sendMail(mailOptions);
 		logger.info({ messageId: info.messageId }, 'Verification email sent');
+		return info;
 	} catch (error) {
 		logger.error(error, 'Failed to send verification email');
 	}
