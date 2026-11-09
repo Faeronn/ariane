@@ -50,30 +50,11 @@ Le schéma vient des fichiers de `migrations/`, appliqués dans l’ordre et une
 
 ### 4️⃣ Variables d’environnement
 
-Créer un fichier .env :
+Copier `.env.example` en `.env` et le compléter : chaque variable y est commentée.
 ```
-PORT=3000
-
-DB_HOST=localhost
-DB_HOST=3306
-DB_USER=root
-DB_PASSWORD=secret
-DB_NAME=vuln_tracker
-
-JWT_ACCESS_SECRET=change_me_access
-JWT_REFRESH_SECRET=change_me_refresh
-
-MAIL_HOST=smtp.example.com
-MAIL_PORT=587
-MAIL_USER=user
-MAIL_PASS=password
-
-# NVD (source des CPE/CVE). Sans clé : 5 requêtes / 30 s ; avec clé : 50 / 30 s.
-# Clé gratuite : https://nvd.nist.gov/developers/request-an-api-key
-NVD_API_KEY=
-# false désactive les jobs NVD en tâche de fond (tests, dev hors ligne)
-NVD_ENABLED=true
+cp .env.example .env
 ```
+Au démarrage, le serveur vérifie la configuration et refuse de démarrer s’il manque une valeur indispensable (base, secrets JWT, SMTP) ou si `MAIL_TRANSPORT=json` est utilisé en production : les codes de vérification ne partiraient jamais. Sans `NVD_API_KEY`, il démarre mais prévient que la résolution CPE/CVE sera lente (5 requêtes NVD / 30 s au lieu de 50).
 
 ### 5️⃣ Lancer le serveur
 ```

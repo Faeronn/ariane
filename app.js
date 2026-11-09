@@ -6,7 +6,9 @@ import agentsRouter from './routes/agents.js';
 import authRouter from './routes/auth.js';
 import { startResolveCpeJob } from './jobs/resolve-cpe.js';
 import { startSyncCvesJob } from './jobs/sync-cves.js';
+import { validateConfig } from './utils/config.js';
 import logger from './utils/logger.js';
+import database from './utils/database.js';
 import pinoHttp from 'pino-http';
 import crypto from 'node:crypto';
 import express from 'express';
@@ -46,7 +48,17 @@ app.use('/agents', agentsRouter);
 app.use(notFound);
 app.use(errorHandler);
 
-if (import.meta.main) {
+async function start() {
+	const { errors, warnings } = validateConfig();
+	for (const warning of warnings) logger.warn(warning);
+	if (errors.length > 0) {
+		for (const error of errors) logger.error(error);
+		logger.error('Invalid configuration, see .env.example. Server not started.');
+		process.exitCode = 1;
+		await database.end(); // the pool would otherwise keep the process alive
+		return;
+	}
+
 	app.listen(port, () => {
 		logger.info(`Server running on http://localhost:${port}`);
 		// Background NVD work, off the request path. NVD_ENABLED=false turns it off (tests, offline dev).
@@ -56,6 +68,8 @@ if (import.meta.main) {
 		}
 	});
 }
+
+if (import.meta.main) await start();
 
 export default app;
 

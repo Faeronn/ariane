@@ -1,0 +1,32 @@
+// Boot-time checks of the environment: a configuration that cannot work stops the start-up
+// instead of failing later on a request. Pure over an env object; app.js decides what to do.
+
+const REQUIRED = ['PORT', 'DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'];
+const MAIL_REQUIRED = ['MAIL_HOST', 'MAIL_PORT', 'MAIL_USER', 'MAIL_PASS'];
+
+const isSet = (environment, name) => Boolean(environment[name]?.trim());
+
+function checkRequired(environment, report) {
+	for (const name of REQUIRED.filter(variable => !isSet(environment, variable))) report.errors.push(`${name} is not set.`);
+}
+
+function checkMail(environment, report) {
+	if (environment.MAIL_TRANSPORT === 'json') {
+		if (environment.NODE_ENV === 'production') report.errors.push('MAIL_TRANSPORT=json is not allowed in production: verification mails would never be sent.');
+		return;
+	}
+	for (const name of MAIL_REQUIRED.filter(variable => !isSet(environment, variable))) report.errors.push(`${name} is not set (or set MAIL_TRANSPORT=json outside production).`);
+}
+
+function checkNvd(environment, report) {
+	if (environment.NVD_ENABLED === 'false' || isSet(environment, 'NVD_API_KEY')) return;
+	report.warnings.push('NVD_API_KEY is not set: NVD allows only 5 requests per 30 s, CPE and CVE resolution will be slow. Free key: https://nvd.nist.gov/developers/request-an-api-key');
+}
+
+const RULES = [checkRequired, checkMail, checkNvd];
+
+export function validateConfig(environment = process.env) {
+	const report = { errors: [], warnings: [] };
+	for (const rule of RULES) rule(environment, report);
+	return report;
+}
