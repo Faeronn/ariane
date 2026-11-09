@@ -1,4 +1,5 @@
 import authenticateUser from '../middleware/authenticate-user.js';
+import requireRole from '../middleware/require-role.js';
 import sanitizeInput from '../utils/sanitizer.js';
 import database from '../utils/database.js';
 import { hashToken } from '../utils/jwt.js';
@@ -90,7 +91,7 @@ router.get('/:id/vulns', async (request, response) => {
 });
 
 // Enroll a machine. The plain agent key is returned once; only its hash is stored.
-router.post('/', async (request, response) => {
+router.post('/', requireRole('admin'), async (request, response) => {
 	const hostname = typeof request.body?.hostname === 'string' ? sanitizeInput(request.body.hostname).trim() : '';
 	if (!isHostnameValid(hostname)) return response.status(400).send({ message: 'Error : Invalid hostname.' });
 
@@ -106,7 +107,7 @@ router.post('/', async (request, response) => {
 });
 
 // Revoke a machine: its agent key stops working. Idempotent on an already revoked machine.
-router.delete('/:id', async (request, response) => {
+router.delete('/:id', requireRole('admin'), async (request, response) => {
 	const machineID = parseMachineID(request.params.id);
 	if (!machineID) return response.status(400).send({ message: 'Error : Invalid machine id.' });
 
