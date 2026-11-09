@@ -87,10 +87,14 @@ npm run dev
 
 | Méthode | Route                 | Description                  |
 |---------|-----------------------|------------------------------|
+| POST    | /machines             | Enrôlement : renvoie `machineID` et la clé agent (affichée une seule fois) |
+| DELETE  | /machines/:id         | Révocation de la machine et de sa clé agent |
 | POST    | /agents/inventory     | Envoi snapshot machine       |
 | GET     | /machines             | Liste des machines           |
 | GET     | /machines/:id         | Détails machine              |
 | GET     | /machines/:id/vulns   | Vulnérabilités détectées     |
+
+Les routes `/machines` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée.
 
 
 ## 🧪 Tests

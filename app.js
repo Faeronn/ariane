@@ -1,5 +1,6 @@
 import errorHandler from './middleware/error-handler.js';
 import jsonBody from './middleware/json-body.js';
+import machinesRouter from './routes/machines.js';
 import authRouter from './routes/auth.js';
 import logger from './utils/logger.js';
 import pinoHttp from 'pino-http';
@@ -33,6 +34,7 @@ app.use(
 
 // Routes
 app.use('/auth', cors(), authRouter);
+app.use('/machines', cors(), machinesRouter);
 
 app.use(errorHandler);
 

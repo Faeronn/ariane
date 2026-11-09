@@ -28,6 +28,26 @@ CREATE TABLE `domain`  (
 ) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
+-- Table structure for machines
+-- ----------------------------
+DROP TABLE IF EXISTS `machines`;
+CREATE TABLE `machines`  (
+  `machineID` int NOT NULL AUTO_INCREMENT,
+  `hostname` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `osFamily` enum('linux','windows') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
+  `osVersion` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
+  `apiKeyHash` char(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `createdBy` int NULL DEFAULT NULL,
+  `createdAt` datetime NOT NULL,
+  `lastSeenAt` datetime NULL DEFAULT NULL,
+  `revokedAt` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`machineID`) USING BTREE,
+  UNIQUE INDEX `uniq_apiKeyHash`(`apiKeyHash`) USING BTREE,
+  INDEX `idx_createdBy`(`createdBy`) USING BTREE,
+  CONSTRAINT `machines_ibfk_1` FOREIGN KEY (`createdBy`) REFERENCES `users` (`userID`) ON DELETE SET NULL ON UPDATE RESTRICT
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for refresh_token
 -- ----------------------------
 DROP TABLE IF EXISTS `refresh_token`;
