@@ -2,6 +2,7 @@ import database from '../utils/database.js';
 import { withJobLock } from '../utils/job-lock.js';
 import { machineVulnerabilities } from '../utils/vulnerabilities.js';
 import { sendAlertDigest } from '../utils/mailer.js';
+import { formatDigest, postWebhook } from '../utils/webhook.js';
 import baseLogger from '../utils/logger.js';
 
 const SEVERITY_RANK = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
@@ -73,8 +74,15 @@ async function processChannel(organization, { column, enabled, deliver }) {
 	return digest.total;
 }
 
+async function deliverWebhook(organization, digest) {
+	await postWebhook(organization.alertWebhookKind, organization.alertWebhookUrl, formatDigest(organization.alertWebhookKind, digest));
+	return true;
+}
+
+// Each channel keeps its own sent marker: a failing webhook never blocks or repeats the email.
 const channelsOf = organization => [
-	{ column: 'emailSentAt', enabled: organization.alertEmailEnabled === 1, deliver: deliverEmail }
+	{ column: 'emailSentAt', enabled: organization.alertEmailEnabled === 1, deliver: deliverEmail },
+	{ column: 'webhookSentAt', enabled: Boolean(organization.alertWebhookKind && organization.alertWebhookUrl), deliver: deliverWebhook }
 ];
 
 async function tick() {

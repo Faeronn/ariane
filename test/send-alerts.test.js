@@ -1,9 +1,11 @@
-import { describe, it, beforeEach, afterEach, after, mock } from 'node:test';
+import { describe, it, before, beforeEach, afterEach, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { runOnce } from '../jobs/send-alerts.js';
 import { getTransporter } from '../utils/mailer.js';
 import { reset, TEST_ORG_ID } from './helpers/database.js';
 import { captureLogs } from './helpers/fixtures.js';
+import { startWebhookStub } from './helpers/webhook-stub.js';
+import { formatDigest } from '../utils/webhook.js';
 import database from '../utils/database.js';
 
 const CPE = 'cpe:2.3:a:openssl:openssl:3.0.0:-:*:*:*:*:*:*';
@@ -86,5 +88,98 @@ describe('email alert digest', () => {
 		await runOnce();
 		assert.match(sent[0].html, /à vérifier/);
 		assert.match(sent[0].html, /&lt;b&gt;web&lt;\/b&gt;/);
+	});
+});
+
+const webhookState = () => database.query('SELECT cveID, webhookSentAt IS NOT NULL AS posted, emailSentAt IS NOT NULL AS emailed FROM machine_cve_state ORDER BY cveID')
+	.then(rows => rows.map(({ cveID, posted, emailed }) => `${cveID}:${posted ? 'posted' : 'unposted'}:${emailed ? 'emailed' : 'unemailed'}`));
+
+describe('webhook alert delivery', () => {
+	let hook;
+	before(async () => {
+		hook = await startWebhookStub();
+		process.env.WEBHOOK_TEST_ORIGIN = hook.origin;
+	});
+	after(async () => {
+		delete process.env.WEBHOOK_TEST_ORIGIN;
+		await hook.close();
+	});
+	beforeEach(async () => {
+		hook.reset();
+		await database.query('UPDATE organizations SET alertWebhookKind = ?, alertWebhookUrl = ? WHERE orgID = ?', ['slack', `${hook.origin}/hook`, TEST_ORG_ID]);
+	});
+
+	it('posts one Slack message listing the new CVE with its machine', async () => {
+		await runOnce();
+		assert.equal(hook.posts.length, 1);
+		const text = JSON.stringify(hook.posts[0].body);
+		assert.match(hook.posts[0].body.text, /1 nouvelle\(s\) vulnérabilité\(s\)/);
+		assert.match(text, /web-01/);
+		assert.match(text, /CVE-2000-0001/);
+		assert.doesNotMatch(text, /CVE-2000-0002/);
+		assert.deepEqual(await webhookState(), ['CVE-2000-0001:posted:emailed', 'CVE-2000-0002:posted:emailed']);
+	});
+
+	it('posts the Discord format within its limits', async () => {
+		await database.query('UPDATE organizations SET alertWebhookKind = ? WHERE orgID = ?', ['discord', TEST_ORG_ID]);
+		await runOnce();
+		const { body } = hook.posts[0];
+		assert.match(body.content, /nouvelle/);
+		assert.equal(body.embeds.length, 1);
+		assert.equal(body.embeds[0].title, 'web-01');
+		assert.match(body.embeds[0].description, /CVE-2000-0001/);
+	});
+
+	it('keeps the webhook unsent when it fails, without affecting the email', async () => {
+		hook.answer(500);
+		const logs = captureLogs();
+		try {
+			await runOnce();
+		} finally {
+			logs.restore();
+		}
+		assert.deepEqual(await webhookState(), ['CVE-2000-0001:unposted:emailed', 'CVE-2000-0002:posted:emailed']);
+		hook.answer(204);
+		await runOnce();
+		assert.deepEqual(await webhookState(), ['CVE-2000-0001:posted:emailed', 'CVE-2000-0002:posted:emailed']);
+		assert.equal(sent.length, 1);
+	});
+
+	it('never posts to a URL outside the allowlist', async () => {
+		delete process.env.WEBHOOK_TEST_ORIGIN;
+		const logs = captureLogs();
+		try {
+			await runOnce();
+		} finally {
+			logs.restore();
+			process.env.WEBHOOK_TEST_ORIGIN = hook.origin;
+		}
+		assert.equal(hook.posts.length, 0);
+		assert.ok(logs.lines.some(line => /refused/.test(line.err?.message)));
+	});
+
+	it('marks alerts handled without any request when the organization has no webhook', async () => {
+		await database.query('UPDATE organizations SET alertWebhookKind = NULL, alertWebhookUrl = NULL');
+		await runOnce();
+		assert.equal(hook.posts.length, 0);
+		assert.deepEqual(await webhookState(), ['CVE-2000-0001:posted:emailed', 'CVE-2000-0002:posted:emailed']);
+	});
+});
+
+const vulnerability = index => ({ cveID: `CVE-2000-${String(index).padStart(4, '0')}`, severity: 'HIGH', cvssScore: 7.5, software: [{ name: 'x'.repeat(200), version: '1' }] });
+
+describe('formatDigest limits', () => {
+	const digest = { organization: 'Test', total: 600, shown: 600, machines: Array.from({ length: 60 }, (_, machine) => ({ hostname: `host-${machine}`, vulnerabilities: Array.from({ length: 10 }, (__, index) => vulnerability(index)) })) };
+
+	it('stays within Slack limits', () => {
+		const body = formatDigest('slack', digest);
+		assert.ok(body.blocks.length <= 50);
+		assert.ok(body.blocks.every(block => block.text.text.length <= 3000));
+	});
+
+	it('stays within Discord limits', () => {
+		const body = formatDigest('discord', digest);
+		assert.ok(body.embeds.length <= 10);
+		assert.ok(body.embeds.every(embed => embed.description.length <= 4096 && embed.title.length <= 256));
 	});
 });

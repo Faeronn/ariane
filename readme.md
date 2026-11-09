@@ -86,7 +86,7 @@ Chaque domaine email autorisé (table `domain`) appartient à une organisation :
 | GET     | /organization/alerts | membre | Réglages d’alerte (URL du webhook masquée pour les viewers) |
 | PUT     | /organization/alerts | admin  | `{ "minSeverity": "LOW" \| "MEDIUM" \| "HIGH" \| "CRITICAL", "emailEnabled": true, "webhookKind": "slack" \| "discord" \| null, "webhookUrl": "https://hooks.slack.com/services/…" }` |
 
-Toutes les 15 minutes, les CVE apparues sur une machine depuis le dernier passage sont envoyées aux admins vérifiés de l’organisation, en un seul email récapitulatif (100 CVE au plus, triées par machine), si leur sévérité atteint `minSeverity`. Une CVE pas encore notée par le NVD est toujours signalée. Au premier passage sur une machine, ses CVE déjà présentes sont enregistrées sans alerte. Un envoi qui échoue est retenté au passage suivant.
+Toutes les 15 minutes, les CVE apparues sur une machine depuis le dernier passage sont envoyées aux admins vérifiés de l’organisation, en un seul email récapitulatif (100 CVE au plus, triées par machine), si leur sévérité atteint `minSeverity`. Une CVE pas encore notée par le NVD est toujours signalée. Au premier passage sur une machine, ses CVE déjà présentes sont enregistrées sans alerte. Si l’organisation a configuré un webhook Slack ou Discord, le même récapitulatif y est posté. Chaque canal est suivi séparément : un envoi qui échoue (webhook en panne, SMTP indisponible) est retenté au passage suivant, sans renvoyer ce qui est déjà parti sur l’autre canal.
 
 Seules les URL de webhook Slack (`https://hooks.slack.com/services/…`) et Discord (`https://discord.com/api/webhooks/…`) sont acceptées : l’API n’envoie jamais de requête vers une autre adresse.
 
