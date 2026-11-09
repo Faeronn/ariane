@@ -1,27 +1,11 @@
-/*
- Navicat Premium Data Transfer
-
- Source Server         : MariaDB-local
- Source Server Type    : MySQL
- Source Server Version : 110400
- Source Host           : localhost:3306
- Source Schema         : ariane
-
- Target Server Type    : MySQL
- Target Server Version : 110400
- File Encoding         : 65001
-
- Date: 17/02/2026 15:38:48
-*/
-
+-- Initial schema (formerly ariane.sql). Idempotent: CREATE TABLE IF NOT EXISTS, never drops.
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------
 -- Table structure for cpe_cve
 -- ----------------------------
-DROP TABLE IF EXISTS `cpe_cve`;
-CREATE TABLE `cpe_cve`  (
+CREATE TABLE IF NOT EXISTS `cpe_cve`  (
   `cpeName` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `cveID` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
   PRIMARY KEY (`cpeName`, `cveID`) USING BTREE,
@@ -32,8 +16,7 @@ CREATE TABLE `cpe_cve`  (
 -- ----------------------------
 -- Table structure for cve
 -- ----------------------------
-DROP TABLE IF EXISTS `cve`;
-CREATE TABLE `cve`  (
+CREATE TABLE IF NOT EXISTS `cve`  (
   `cveID` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL,
   `cvssScore` decimal(3, 1) NULL DEFAULT NULL,
@@ -46,18 +29,16 @@ CREATE TABLE `cve`  (
 -- ----------------------------
 -- Table structure for domain
 -- ----------------------------
-DROP TABLE IF EXISTS `domain`;
-CREATE TABLE `domain`  (
+CREATE TABLE IF NOT EXISTS `domain`  (
   `domainId` int NOT NULL AUTO_INCREMENT,
   `domainName` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
   PRIMARY KEY (`domainId`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for installed_software
 -- ----------------------------
-DROP TABLE IF EXISTS `installed_software`;
-CREATE TABLE `installed_software`  (
+CREATE TABLE IF NOT EXISTS `installed_software`  (
   `softwareID` int NOT NULL AUTO_INCREMENT,
   `snapshotID` int NOT NULL,
   `vendor` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
@@ -72,8 +53,7 @@ CREATE TABLE `installed_software`  (
 -- ----------------------------
 -- Table structure for inventory_snapshot
 -- ----------------------------
-DROP TABLE IF EXISTS `inventory_snapshot`;
-CREATE TABLE `inventory_snapshot`  (
+CREATE TABLE IF NOT EXISTS `inventory_snapshot`  (
   `snapshotID` int NOT NULL AUTO_INCREMENT,
   `machineID` int NOT NULL,
   `collectedAt` datetime NOT NULL,
@@ -86,8 +66,7 @@ CREATE TABLE `inventory_snapshot`  (
 -- ----------------------------
 -- Table structure for machines
 -- ----------------------------
-DROP TABLE IF EXISTS `machines`;
-CREATE TABLE `machines`  (
+CREATE TABLE IF NOT EXISTS `machines`  (
   `machineID` int NOT NULL AUTO_INCREMENT,
   `hostname` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `osFamily` enum('linux','windows') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
@@ -106,8 +85,7 @@ CREATE TABLE `machines`  (
 -- ----------------------------
 -- Table structure for refresh_token
 -- ----------------------------
-DROP TABLE IF EXISTS `refresh_token`;
-CREATE TABLE `refresh_token`  (
+CREATE TABLE IF NOT EXISTS `refresh_token`  (
   `id` int NOT NULL AUTO_INCREMENT,
   `userID` int NOT NULL,
   `tokenHash` char(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
@@ -119,13 +97,12 @@ CREATE TABLE `refresh_token`  (
   UNIQUE INDEX `uniq_tokenHash`(`tokenHash`) USING BTREE,
   INDEX `idx_userID`(`userID`) USING BTREE,
   CONSTRAINT `refresh_token_ibfk_1` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for software_cpe
 -- ----------------------------
-DROP TABLE IF EXISTS `software_cpe`;
-CREATE TABLE `software_cpe`  (
+CREATE TABLE IF NOT EXISTS `software_cpe`  (
   `softwareCpeID` int NOT NULL AUTO_INCREMENT,
   `vendor` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
@@ -144,8 +121,7 @@ CREATE TABLE `software_cpe`  (
 -- ----------------------------
 -- Table structure for users
 -- ----------------------------
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users`  (
+CREATE TABLE IF NOT EXISTS `users`  (
   `userID` int NOT NULL AUTO_INCREMENT,
   `username` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
   `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
@@ -154,13 +130,12 @@ CREATE TABLE `users`  (
   `role` varchar(25) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
   `isVerified` tinyint NULL DEFAULT NULL,
   PRIMARY KEY (`userID`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for verifications
 -- ----------------------------
-DROP TABLE IF EXISTS `verifications`;
-CREATE TABLE `verifications`  (
+CREATE TABLE IF NOT EXISTS `verifications`  (
   `verificationID` int NOT NULL AUTO_INCREMENT,
   `userID` int NOT NULL,
   `verificationCode` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
@@ -169,6 +144,6 @@ CREATE TABLE `verifications`  (
   PRIMARY KEY (`verificationID`) USING BTREE,
   UNIQUE INDEX `uniq_userID`(`userID`) USING BTREE,
   CONSTRAINT `verifications_ibfk_1` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;

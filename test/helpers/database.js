@@ -1,12 +1,12 @@
-import { readFile } from 'node:fs/promises';
 import mariadb from 'mariadb';
+import { migrate } from '../../utils/migrate.js';
 
 export const ALLOWED_DOMAIN = 'ariane.test';
 
 const databaseName = process.env.DB_NAME ?? '';
 if (!databaseName.endsWith('_test')) throw new Error(`Refusing to run tests on database "${databaseName}": DB_NAME must end with _test.`);
 
-function connect(options = {}) {
+export function connect(options = {}) {
 	return mariadb.createConnection({
 		host: process.env.DB_HOST,
 		port: process.env.DB_PORT,
@@ -17,25 +17,42 @@ function connect(options = {}) {
 	});
 }
 
-// Run once per `npm test` through --test-global-setup: recreate the schema from the dump.
-export async function globalSetup() {
-	const schema = await readFile(new URL('../../ariane.sql', import.meta.url), 'utf8');
-	const connection = await connect({ multipleStatements: true });
+const TABLES_SQL = "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'";
+
+// Run `statement(name)` on each listed table with foreign key checks off.
+async function forEachTable(connection, keep, statement) {
+	const tables = await connection.query(TABLES_SQL, [databaseName]);
+	await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+	for (const { name } of tables.filter(table => keep(table.name))) await connection.query(statement(name));
+	await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+}
+
+// Drop every table of the test database, including the migration history.
+export async function dropAllTables() {
+	const connection = await connect();
 	try {
-		await connection.query(schema);
+		await forEachTable(connection, () => true, name => `DROP TABLE \`${name}\``);
 	} finally {
 		await connection.end();
 	}
 }
 
-// Empty every table, then re-seed the allowed signup domain.
+// Build the schema from scratch through the migrations, the same path as production.
+export async function rebuildSchema() {
+	await dropAllTables();
+	await migrate({ connect: () => connect({ multipleStatements: true }) });
+}
+
+// Run once per `npm test` through --test-global-setup.
+export async function globalSetup() {
+	await rebuildSchema();
+}
+
+// Empty every table but the migration history, then re-seed the allowed signup domain.
 export async function reset() {
 	const connection = await connect();
 	try {
-		const tables = await connection.query('SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = \'BASE TABLE\'', [databaseName]);
-		await connection.query('SET FOREIGN_KEY_CHECKS = 0');
-		for (const { name } of tables) await connection.query(`TRUNCATE TABLE \`${name}\``);
-		await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+		await forEachTable(connection, name => name !== 'schema_migrations', name => `TRUNCATE TABLE \`${name}\``);
 		await connection.query('INSERT INTO domain (domainName) VALUES (?)', [ALLOWED_DOMAIN]);
 	} finally {
 		await connection.end();

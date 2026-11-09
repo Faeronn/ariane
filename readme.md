@@ -39,11 +39,14 @@ cd ariane
 npm install
 ```
 
-### 3️⃣ Importer la base de données
+### 3️⃣ Créer la base de données
 ```
 mysql -u root -p -e "CREATE DATABASE ariane CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -u root -p ariane < ariane.sql
+npm run migrate
 ```
+Le schéma vient des fichiers de `migrations/`, appliqués dans l’ordre et une seule fois (table `schema_migrations`). `npm run migrate` met aussi à jour une base existante sans la recréer : une base importée de l’ancien `ariane.sql` est reconnue telle quelle. Un changement de schéma = un nouveau fichier `migrations/NNN-description.sql`.
+
+`npm run migrate` utilise l’utilisateur du `.env` : il lui faut les droits de modifier le schéma (`CREATE`, `ALTER`, `INDEX`, `REFERENCES`, `DROP`).
 
 ### 4️⃣ Variables d’environnement
 
