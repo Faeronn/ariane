@@ -24,7 +24,7 @@ export async function api(baseUrl, method, path, { body, token, headers = {} } =
 	} catch {
 		json = undefined;
 	}
-	return { status: response.status, body: json, text };
+	return { status: response.status, body: json, text, headers: response.headers };
 }
 
 export async function createUser(baseUrl, local = 'alice') {

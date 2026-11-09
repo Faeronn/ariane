@@ -1,4 +1,5 @@
 import errorHandler from './middleware/error-handler.js';
+import corsAllowlist from './middleware/cors.js';
 import notFound from './middleware/not-found.js';
 import jsonBody, { createJsonBody } from './middleware/json-body.js';
 import machinesRouter from './routes/machines.js';
@@ -12,7 +13,6 @@ import database from './utils/database.js';
 import pinoHttp from 'pino-http';
 import crypto from 'node:crypto';
 import express from 'express';
-import cors from 'cors';
 
 const app = express();
 app.disable("x-powered-by");
@@ -41,8 +41,8 @@ app.use(
 );
 
 // Routes
-app.use('/auth', cors(), authRouter);
-app.use('/machines', cors(), machinesRouter);
+app.use('/auth', corsAllowlist, authRouter);
+app.use('/machines', corsAllowlist, machinesRouter);
 app.use('/agents', agentsRouter);
 
 app.use(notFound);

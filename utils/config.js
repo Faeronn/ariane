@@ -1,3 +1,5 @@
+import { parseOrigins, isValidOrigin } from '../middleware/cors.js';
+
 // Boot-time checks of the environment: a configuration that cannot work stops the start-up
 // instead of failing later on a request. Pure over an env object; app.js decides what to do.
 
@@ -24,7 +26,11 @@ function checkNvd(environment, report) {
 	report.warnings.push('NVD_API_KEY is not set: NVD allows only 5 requests per 30 s, CPE and CVE resolution will be slow. Free key: https://nvd.nist.gov/developers/request-an-api-key');
 }
 
-const RULES = [checkRequired, checkMail, checkNvd];
+function checkCors(environment, report) {
+	for (const origin of parseOrigins(environment.CORS_ORIGINS).filter(value => !isValidOrigin(value))) report.errors.push(`CORS_ORIGINS: "${origin}" is not an origin like https://dashboard.example.com (no path, no trailing slash).`);
+}
+
+const RULES = [checkRequired, checkMail, checkNvd, checkCors];
 
 export function validateConfig(environment = process.env) {
 	const report = { errors: [], warnings: [] };
