@@ -57,8 +57,33 @@ export function cpeMatchCovers(match, cpeName) {
 	return isWithinRange(version, match);
 }
 
-// True when any configuration node of the CVE has a vulnerable cpeMatch covering `cpeName`.
-// NVD's cpeName filter also returns CVEs where the CPE is only a non-vulnerable platform.
+const MAX_PLATFORMS = 20;
+
+const nodeCovers = (node, cpeName) => (node.cpeMatch ?? []).some(match => cpeMatchCovers(match, cpeName));
+
+// Under which platforms does the CVE apply to `cpeName`? undefined: it does not (no vulnerable
+// match covers the CPE; NVD's cpeName filter also returns CVEs where the CPE is only a
+// non-vulnerable platform). { platforms: [] }: whatever the platform. Otherwise the platform
+// criteria of the AND configurations that cover it ("vulnerable when running on Windows").
+export function cveConditionsForCpe(cve, cpeName) {
+	const platforms = new Set();
+	let covered = false;
+
+	for (const configuration of cve.configurations ?? []) {
+		const nodes = configuration.nodes ?? [];
+		if (!nodes.some(node => nodeCovers(node, cpeName))) continue;
+		covered = true;
+
+		const required = configuration.operator === 'AND'
+			? nodes.filter(node => !nodeCovers(node, cpeName)).flatMap(node => (node.cpeMatch ?? []).filter(match => match.vulnerable === false).map(match => match.criteria))
+			: [];
+		if (required.length === 0) return { platforms: [] }; // one unconditional configuration wins
+		for (const criteria of required) platforms.add(criteria);
+	}
+	return covered ? { platforms: [...platforms].slice(0, MAX_PLATFORMS) } : undefined;
+}
+
+// True when any configuration of the CVE has a vulnerable cpeMatch covering `cpeName`.
 export function cveAffectsCpe(cve, cpeName) {
-	return (cve.configurations ?? []).some(configuration => (configuration.nodes ?? []).some(node => (node.cpeMatch ?? []).some(match => cpeMatchCovers(match, cpeName))));
+	return cveConditionsForCpe(cve, cpeName) !== undefined;
 }

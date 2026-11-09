@@ -1,5 +1,5 @@
 import { getNvdClient, NvdError } from '../utils/nvd.js';
-import { cveAffectsCpe } from '../utils/cpe-match.js';
+import { cveConditionsForCpe } from '../utils/cpe-match.js';
 import database from '../utils/database.js';
 import baseLogger from '../utils/logger.js';
 
@@ -38,7 +38,7 @@ export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE 
 
 		for (const { cpeName, synthetic } of cpes) {
 			const vulnerabilities = await client.getCvesByCpe(cpeName, { virtual: Boolean(synthetic) });
-			const cves = vulnerabilities.map(({ cve }) => cve).filter(cve => cveAffectsCpe(cve, cpeName));
+			const cves = vulnerabilities.map(({ cve }) => ({ ...cve, conditions: cveConditionsForCpe(cve, cpeName) })).filter(cve => cve.conditions);
 			await storeLinks(cpeName, cves);
 			summary.synced += 1;
 			summary.linked += cves.length;
@@ -65,7 +65,8 @@ function storeLinks(cpeName, cves) {
 			}));
 		}
 		await connection.query('DELETE FROM cpe_cve WHERE cpeName = ?', [cpeName]);
-		if (cves.length > 0) await connection.batch('INSERT INTO cpe_cve (cpeName, cveID) VALUES (?, ?)', cves.map(cve => [cpeName, cve.id]));
+		// platforms: JSON criteria list when the CVE needs a platform, NULL when unconditional.
+		if (cves.length > 0) await connection.batch("INSERT INTO cpe_cve (cpeName, cveID, platforms) VALUES (?, ?, NULLIF(?, ''))", cves.map(cve => [cpeName, cve.id, cve.conditions.platforms.length > 0 ? JSON.stringify(cve.conditions.platforms) : '']));
 		await connection.query('UPDATE software_cpe SET cvesCheckedAt = UTC_TIMESTAMP() WHERE cpeName = ?', [cpeName]);
 	});
 }

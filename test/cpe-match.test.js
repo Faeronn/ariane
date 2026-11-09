@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { compareVersions, cpeMatchCovers, cveAffectsCpe } from '../utils/cpe-match.js';
+import { compareVersions, cpeMatchCovers, cveAffectsCpe, cveConditionsForCpe } from '../utils/cpe-match.js';
+import { loadFixture } from './helpers/nvd-stub.js';
 
 const CPE = 'cpe:2.3:a:openssl:openssl:3.0.5:-:*:*:*:*:*:*';
 const ANY_OPENSSL = 'cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*';
@@ -80,5 +81,35 @@ describe('cveAffectsCpe', () => {
 		assert.ok(!cveAffectsCpe(platformOnly, CPE));
 		assert.ok(cveAffectsCpe({ configurations: [{ nodes: [{ cpeMatch: [range({ versionEndExcluding: '3.0.7' })] }] }] }, CPE));
 		assert.ok(!cveAffectsCpe({}, CPE));
+	});
+});
+
+// Synthetic CVEs in the real NVD configuration shape (see the Mutt case in cves-openssl-3.0.0.json).
+const OPENSSL_RANGE = { vulnerable: true, criteria: 'cpe:2.3:a:openssl:openssl:*:*:*:*:*:*:*:*', versionEndExcluding: '3.0.2' };
+const WINDOWS = 'cpe:2.3:o:microsoft:windows:-:*:*:*:*:*:*:*';
+const plain = { configurations: [{ nodes: [{ operator: 'OR', cpeMatch: [OPENSSL_RANGE] }] }] };
+const onWindows = { configurations: [{ operator: 'AND', nodes: [{ operator: 'OR', cpeMatch: [OPENSSL_RANGE] }, { operator: 'OR', cpeMatch: [{ vulnerable: false, criteria: WINDOWS }] }] }] };
+
+const real = id => loadFixture('cves-openssl-3.0.0.json').vulnerabilities.find(({ cve }) => cve.id === id).cve;
+
+describe('cveConditionsForCpe', () => {
+	const OPENSSL = 'cpe:2.3:a:openssl:openssl:3.0.0:-:*:*:*:*:*:*';
+
+	it('gives no condition for a plain configuration (real CVE-2022-3996)', () => {
+		assert.deepEqual(cveConditionsForCpe(real('CVE-2022-3996'), OPENSSL), { platforms: [] });
+		assert.deepEqual(cveConditionsForCpe(plain, OPENSSL), { platforms: [] });
+	});
+
+	it('returns the platform criteria of an AND configuration', () => {
+		assert.deepEqual(cveConditionsForCpe(onWindows, OPENSSL), { platforms: [WINDOWS] });
+	});
+
+	it('lets one unconditional configuration override conditional ones', () => {
+		const mixed = { configurations: [...onWindows.configurations, ...plain.configurations] };
+		assert.deepEqual(cveConditionsForCpe(mixed, OPENSSL), { platforms: [] });
+	});
+
+	it('still ignores a CPE that is only a non-vulnerable platform (real Mutt CVE-2009-1390)', () => {
+		assert.equal(cveConditionsForCpe(real('CVE-2009-1390'), OPENSSL), undefined);
 	});
 });

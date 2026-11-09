@@ -67,6 +67,18 @@ describe('sync-cves runOnce', () => {
 		assert.equal(stub.requests.length, 0);
 	});
 
+	it('stores NULL platforms for unconditional links and the criteria for conditional ones', async () => {
+		const fixture = loadFixture('cves-openssl-3.0.0.json');
+		const conditional = structuredClone(fixture.vulnerabilities.find(({ cve }) => cve.id === 'CVE-2022-3996'));
+		conditional.cve.id = 'CVE-2000-0003'; // synthetic: same CVE made Windows-only
+		conditional.cve.configurations = [{ operator: 'AND', nodes: [...conditional.cve.configurations[0].nodes, { operator: 'OR', cpeMatch: [{ vulnerable: false, criteria: 'cpe:2.3:o:microsoft:windows:-:*:*:*:*:*:*:*' }] }] }];
+		stub.route('/cves/2.0', OPENSSL_CPE, { ...fixture, vulnerabilities: [...fixture.vulnerabilities, conditional] });
+		await runOnce({ client });
+
+		const rows = await database.query('SELECT cveID, platforms FROM cpe_cve WHERE cveID IN (?, ?) ORDER BY cveID', ['CVE-2000-0003', 'CVE-2022-3996']);
+		assert.deepEqual(rows.map(({ cveID, platforms }) => [cveID, platforms ?? 'NULL']), [['CVE-2000-0003', '["cpe:2.3:o:microsoft:windows:-:*:*:*:*:*:*:*"]'], ['CVE-2022-3996', 'NULL']]);
+	});
+
 	it('marks the CPE checked even when it has no CVE', async () => {
 		await runOnce({ client });
 		const [row] = await database.query('SELECT cvesCheckedAt FROM software_cpe');
