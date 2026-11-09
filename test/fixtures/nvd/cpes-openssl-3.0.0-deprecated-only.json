@@ -1,0 +1,31 @@
+{
+  "resultsPerPage": 1,
+  "startIndex": 0,
+  "totalResults": 1,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-09T10:59:07.223",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": true,
+        "cpeName": "cpe:2.3:a:openssl:openssl:3.0.0:*:*:*:*:*:*:*",
+        "cpeNameId": "59209EE4-3B03-461B-B5C5-7E53F320C437",
+        "lastModified": "2024-02-29T13:21:56.770",
+        "created": "2021-12-23T20:15:47.883",
+        "titles": [
+          {
+            "title": "OpenSSL  OpenSSL 3.0.0",
+            "lang": "en"
+          }
+        ],
+        "deprecatedBy": [
+          {
+            "cpeName": "cpe:2.3:a:openssl:openssl:3.0.0:-:*:*:*:*:*:*",
+            "cpeNameId": "E2AEB40B-B273-4C38-BCAA-66FD7207BE6D"
+          }
+        ]
+      }
+    }
+  ]
+}

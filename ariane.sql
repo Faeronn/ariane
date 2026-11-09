@@ -96,6 +96,24 @@ CREATE TABLE `refresh_token`  (
 ) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Table structure for software_cpe
+-- ----------------------------
+DROP TABLE IF EXISTS `software_cpe`;
+CREATE TABLE `software_cpe`  (
+  `softwareCpeID` int NOT NULL AUTO_INCREMENT,
+  `vendor` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
+  `version` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
+  `cpeName` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
+  `status` enum('pending','matched','unmatched') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT 'pending',
+  `lastCheckedAt` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`softwareCpeID`) USING BTREE,
+  UNIQUE INDEX `uniq_software`(`vendor`, `name`, `version`) USING BTREE,
+  INDEX `idx_status`(`status`, `lastCheckedAt`) USING BTREE,
+  INDEX `idx_cpeName`(`cpeName`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_520_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for users
 -- ----------------------------
 DROP TABLE IF EXISTS `users`;

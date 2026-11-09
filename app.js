@@ -3,6 +3,7 @@ import jsonBody, { createJsonBody } from './middleware/json-body.js';
 import machinesRouter from './routes/machines.js';
 import agentsRouter from './routes/agents.js';
 import authRouter from './routes/auth.js';
+import { startResolveCpeJob } from './jobs/resolve-cpe.js';
 import logger from './utils/logger.js';
 import pinoHttp from 'pino-http';
 import crypto from 'node:crypto';
@@ -42,7 +43,13 @@ app.use('/agents', agentsRouter);
 
 app.use(errorHandler);
 
-if (import.meta.main) app.listen(port, () => { logger.info(`Server running on http://localhost:${port}`); });
+if (import.meta.main) {
+	app.listen(port, () => {
+		logger.info(`Server running on http://localhost:${port}`);
+		// Background NVD work, off the request path. NVD_ENABLED=false turns it off (tests, offline dev).
+		if (process.env.NVD_ENABLED !== 'false') startResolveCpeJob();
+	});
+}
 
 export default app;
 

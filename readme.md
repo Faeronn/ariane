@@ -64,6 +64,12 @@ MAIL_HOST=smtp.example.com
 MAIL_PORT=587
 MAIL_USER=user
 MAIL_PASS=password
+
+# NVD (source des CPE/CVE). Sans clé : 5 requêtes / 30 s ; avec clé : 50 / 30 s.
+# Clé gratuite : https://nvd.nist.gov/developers/request-an-api-key
+NVD_API_KEY=
+# false désactive les jobs NVD en tâche de fond (tests, dev hors ligne)
+NVD_ENABLED=true
 ```
 
 ### 5️⃣ Lancer le serveur

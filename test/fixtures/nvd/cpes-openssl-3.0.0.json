@@ -1,0 +1,61 @@
+{
+  "resultsPerPage": 3,
+  "startIndex": 0,
+  "totalResults": 3,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-09T10:59:07.223",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": true,
+        "cpeName": "cpe:2.3:a:openssl:openssl:3.0.0:*:*:*:*:*:*:*",
+        "cpeNameId": "59209EE4-3B03-461B-B5C5-7E53F320C437",
+        "lastModified": "2024-02-29T13:21:56.770",
+        "created": "2021-12-23T20:15:47.883",
+        "titles": [
+          {
+            "title": "OpenSSL  OpenSSL 3.0.0",
+            "lang": "en"
+          }
+        ],
+        "deprecatedBy": [
+          {
+            "cpeName": "cpe:2.3:a:openssl:openssl:3.0.0:-:*:*:*:*:*:*",
+            "cpeNameId": "E2AEB40B-B273-4C38-BCAA-66FD7207BE6D"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:openssl:openssl:3.0.0:alpha1:*:*:*:*:*:*",
+        "cpeNameId": "67B0D638-3F68-451C-B424-112CBBC6CF24",
+        "lastModified": "2022-02-02T13:51:58.427",
+        "created": "2022-02-02T13:22:17.143",
+        "titles": [
+          {
+            "title": "OpenSSL Project OpenSSL 3.0.0 Alpha 1",
+            "lang": "en"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:openssl:openssl:3.0.0:-:*:*:*:*:*:*",
+        "cpeNameId": "E2AEB40B-B273-4C38-BCAA-66FD7207BE6D",
+        "lastModified": "2024-02-29T13:21:56.770",
+        "created": "2022-02-02T13:23:13.547",
+        "titles": [
+          {
+            "title": "OpenSSL Project OpenSSL 3.0.0",
+            "lang": "en"
+          }
+        ]
+      }
+    }
+  ]
+}

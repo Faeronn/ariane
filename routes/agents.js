@@ -18,6 +18,8 @@ router.post('/inventory', async (request, response) => {
 			const insertedID = Number(snapshot.insertId);
 			if (inventory.software.length > 0) {
 				await connection.batch('INSERT INTO installed_software (snapshotID, vendor, name, version) VALUES (?, ?, ?, ?)', inventory.software.map(({ vendor, name, version }) => [insertedID, vendor, name, version]));
+				// New software keys wait as `pending` for the CPE resolver job; the request never calls NVD.
+				await connection.batch('INSERT IGNORE INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', inventory.software.map(({ vendor, name, version }) => [vendor, name, version]));
 			}
 			await connection.query(`UPDATE machines SET hostname = COALESCE(NULLIF(?, ''), hostname), osFamily = ?, osVersion = NULLIF(?, ''), lastSeenAt = UTC_TIMESTAMP() WHERE machineID = ?`, [inventory.hostname ?? '', inventory.osFamily, inventory.osVersion ?? '', machineID]);
 			return insertedID;
