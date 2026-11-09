@@ -79,6 +79,7 @@ export function createNvdClient({
 
 	return {
 		searchCpes: keyword => getAllPages('/cpes/2.0', { keywordSearch: keyword }, 'products'),
+		searchCpesByMatchString: cpeMatchString => getAllPages('/cpes/2.0', { cpeMatchString }, 'products'),
 		getCvesByCpe: cpeName => getAllPages('/cves/2.0', { cpeName }, 'vulnerabilities')
 	};
 }

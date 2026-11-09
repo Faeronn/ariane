@@ -50,12 +50,15 @@ export async function globalSetup() {
 	await rebuildSchema();
 }
 
-// Empty every table but the migration history, then re-seed organization 1 owning the allowed domain.
+// Reference data seeded by migrations survives resets.
+const KEPT_TABLES = new Set(['schema_migrations', 'software_alias']);
+
+// Empty every table but the kept ones, then re-seed organization 1 owning the allowed domain.
 export async function reset() {
 	await resetRateLimits();
 	const connection = await connect();
 	try {
-		await forEachTable(connection, name => name !== 'schema_migrations', name => `TRUNCATE TABLE \`${name}\``);
+		await forEachTable(connection, name => !KEPT_TABLES.has(name), name => `TRUNCATE TABLE \`${name}\``);
 		await connection.query('INSERT INTO organizations (orgID, name, createdAt) VALUES (?, ?, UTC_TIMESTAMP())', [TEST_ORG_ID, 'Test']);
 		await connection.query('INSERT INTO domain (domainName, orgID) VALUES (?, ?)', [ALLOWED_DOMAIN, TEST_ORG_ID]);
 	} finally {

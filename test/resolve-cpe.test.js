@@ -81,13 +81,45 @@ describe('resolve-cpe runOnce', () => {
 	});
 
 	it('resolves a Windows display name through its product candidates', async () => {
-		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['mozilla', 'mozilla firefox (x64 fr)', '115.0']);
-		stub.route('/cpes/2.0', 'firefox 115.0', loadFixture('cpes-firefox-115.0.json'));
+		// Without the firefox aliases, the keyword path is the one exercised.
+		const aliases = await database.query('SELECT * FROM software_alias WHERE namePattern LIKE ?', ['mozilla firefox%']);
+		await database.query('DELETE FROM software_alias WHERE namePattern LIKE ?', ['mozilla firefox%']);
+		try {
+			await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['mozilla', 'mozilla firefox (x64 fr)', '115.0']);
+			stub.route('/cpes/2.0', 'firefox 115.0', loadFixture('cpes-firefox-115.0.json'));
+			await runOnce({ client });
+			const row = await keyRow('mozilla firefox (x64 fr)');
+			assert.equal(row.status, 'matched');
+			assert.equal(row.cpeName, 'cpe:2.3:a:mozilla:firefox:115.0:*:*:*:-:*:*:*');
+			assert.equal(stub.requests.find(({ query }) => query.keywordSearch?.includes('firefox'))?.query.keywordSearch, 'firefox 115.0');
+		} finally {
+			for (const alias of aliases) await database.query('INSERT INTO software_alias (aliasID, namePattern, vendorPattern, cpePart, cpeVendor, cpeProduct) VALUES (?, ?, ?, ?, ?, ?)', [alias.aliasID, alias.namePattern, alias.vendorPattern, alias.cpePart, alias.cpeVendor, alias.cpeProduct]);
+		}
+	});
+
+	it('resolves an aliased product with one cpeMatchString request and no keyword search', async () => {
+		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['mozilla', 'mozilla firefox (x64 en-us)', '115.0']);
+		stub.route('/cpes/2.0', 'cpe:2.3:a:mozilla:firefox:115.0', loadFixture('cpes-match-firefox-115.0.json'));
 		await runOnce({ client });
-		const row = await keyRow('mozilla firefox (x64 fr)');
+		const row = await keyRow('mozilla firefox (x64 en-us)');
 		assert.equal(row.status, 'matched');
 		assert.equal(row.cpeName, 'cpe:2.3:a:mozilla:firefox:115.0:*:*:*:-:*:*:*');
-		assert.equal(stub.requests.find(({ query }) => query.keywordSearch?.includes('firefox'))?.query.keywordSearch, 'firefox 115.0');
+		const firefoxRequests = stub.requests.filter(({ query }) => JSON.stringify(query).includes('firefox'));
+		assert.deepEqual(firefoxRequests.map(({ query }) => query.cpeMatchString), ['cpe:2.3:a:mozilla:firefox:115.0']);
+	});
+
+	it('prefers the most specific alias (firefox ESR over firefox)', async () => {
+		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['mozilla', 'mozilla firefox esr (x64 fr)', '115.6.0']);
+		await runOnce({ client });
+		assert.ok(stub.requests.some(({ query }) => query.cpeMatchString === 'cpe:2.3:a:mozilla:firefox_esr:115.6.0'));
+	});
+
+	it('leaves an aliased key unmatched when the dictionary has no such version', async () => {
+		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['google llc', 'google chrome', '122.0.6261.112']);
+		await runOnce({ client });
+		const row = await keyRow('google chrome');
+		assert.equal(row.status, 'unmatched');
+		assert.ok(!stub.requests.some(({ query }) => query.keywordSearch?.includes('chrome')));
 	});
 
 	it('marks a name made only of noise unmatched without calling NVD', async () => {

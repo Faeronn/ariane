@@ -46,6 +46,20 @@ export function pickCpe(software, products) {
 	return resolved.size === 1 ? [...resolved][0] : undefined;
 }
 
+// Most specific alias whose patterns match the lowercased name (and vendor when the alias has one).
+async function findAlias({ name, vendor }) {
+	const [alias] = await database.query(`SELECT cpePart, cpeVendor, cpeProduct FROM software_alias
+		WHERE ? LIKE namePattern AND (vendorPattern IS NULL OR ? LIKE vendorPattern)
+		ORDER BY CHAR_LENGTH(namePattern) DESC, vendorPattern IS NULL LIMIT 1`, [name, vendor]);
+	return alias;
+}
+
+// Known product: ask the CPE dictionary for exactly this vendor, product and version.
+async function resolveByAlias(client, software, alias) {
+	const products = await client.searchCpesByMatchString(`cpe:2.3:${alias.cpePart}:${alias.cpeVendor}:${alias.cpeProduct}:${software.version}`);
+	return pickCpe({ name: alias.cpeProduct, vendor: alias.cpeVendor, version: software.version }, products);
+}
+
 // Try each product candidate of the display name ("Mozilla Firefox (x64 fr)" => firefox, ...)
 // until one resolves; at most one NVD keyword search per candidate. Resolves to undefined when none does.
 async function resolveByKeyword(client, software) {
@@ -54,6 +68,12 @@ async function resolveByKeyword(client, software) {
 		const cpeName = pickCpe({ ...software, name: product }, products);
 		if (cpeName) return cpeName;
 	}
+}
+
+// An alias, when one matches, decides alone; otherwise the name candidates are searched.
+async function resolve(client, software) {
+	const alias = await findAlias(software);
+	return alias ? resolveByAlias(client, software, alias) : resolveByKeyword(client, software);
 }
 
 // One tick: resolve a bounded batch of pending keys and stale unmatched ones. Never overlaps itself;
@@ -72,7 +92,7 @@ export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE 
 			// A packaged version is matched on its upstream one; distributions often backport fixes
 			// without changing it, so such matches are flagged for review rather than trusted.
 			const version = upstreamVersion(key.version);
-			const cpeName = version ? await resolveByKeyword(client, { ...key, version }) : undefined;
+			const cpeName = version ? await resolve(client, { ...key, version }) : undefined;
 			await database.query(`UPDATE software_cpe SET cpeName = NULLIF(?, ''), versionNormalized = ?, status = ?, lastCheckedAt = UTC_TIMESTAMP() WHERE softwareCpeID = ?`, [cpeName ?? '', version !== key.version, cpeName ? 'matched' : 'unmatched', key.softwareCpeID]);
 			summary[cpeName ? 'matched' : 'unmatched'] += 1;
 		}

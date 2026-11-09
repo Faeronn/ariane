@@ -26,7 +26,7 @@ export async function startNvdStub() {
 			return;
 		}
 
-		const key = url.searchParams.get('keywordSearch') ?? url.searchParams.get('cpeName');
+		const key = ['keywordSearch', 'cpeMatchString', 'cpeName', 'virtualMatchString'].map(name => url.searchParams.get(name)).find(Boolean);
 		const fixture = routes.get(`${url.pathname} ${key}`) ?? { resultsPerPage: 0, startIndex: 0, totalResults: 0, products: [], vulnerabilities: [] };
 		const itemsKey = url.pathname.startsWith('/cpes') ? 'products' : 'vulnerabilities';
 		const startIndex = Number(url.searchParams.get('startIndex') ?? 0);
@@ -40,7 +40,7 @@ export async function startNvdStub() {
 	return {
 		baseUrl: `http://127.0.0.1:${server.address().port}`,
 		requests,
-		// Serve `fixture` for a keywordSearch (CPE API) or a cpeName (CVE API).
+		// Serve `fixture` for a keywordSearch or cpeMatchString (CPE API), a cpeName or virtualMatchString (CVE API).
 		route(path, key, fixture) { routes.set(`${path} ${key}`, fixture); },
 		failNext(status, times = 1) { failures = [...failures, ...Array.from({ length: times }, () => status)]; },
 		hangNext(times = 1) { hangs += times; },
