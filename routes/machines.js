@@ -94,8 +94,7 @@ router.post('/', async (request, response) => {
 
 	try {
 		const apiKey = crypto.randomBytes(32).toString('base64url');
-		const result = await database.query('INSERT INTO machines (hostname, apiKeyHash, createdBy, createdAt) SELECT ?, ?, userID, UTC_TIMESTAMP() FROM users WHERE username = ?', [hostname, hashToken(apiKey), request.user.username]);
-		if (result.affectedRows === 0) return response.status(401).send({ message: 'Error : Unknown user.' });
+		const result = await database.query('INSERT INTO machines (orgID, hostname, apiKeyHash, createdBy, createdAt) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())', [request.user.orgID, hostname, hashToken(apiKey), request.user.userID]);
 
 		return response.status(201).send({ message: 'Machine enrolled.', machineID: Number(result.insertId), apiKey });
 	} catch (error) {

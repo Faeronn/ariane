@@ -3,6 +3,7 @@ import { migrate } from '../../utils/migrate.js';
 import { resetRateLimits } from '../../middleware/rate-limit.js';
 
 export const ALLOWED_DOMAIN = 'ariane.test';
+export const TEST_ORG_ID = 1;
 
 const databaseName = process.env.DB_NAME ?? '';
 if (!databaseName.endsWith('_test')) throw new Error(`Refusing to run tests on database "${databaseName}": DB_NAME must end with _test.`);
@@ -49,13 +50,14 @@ export async function globalSetup() {
 	await rebuildSchema();
 }
 
-// Empty every table but the migration history, then re-seed the allowed signup domain.
+// Empty every table but the migration history, then re-seed organization 1 owning the allowed domain.
 export async function reset() {
 	await resetRateLimits();
 	const connection = await connect();
 	try {
 		await forEachTable(connection, name => name !== 'schema_migrations', name => `TRUNCATE TABLE \`${name}\``);
-		await connection.query('INSERT INTO domain (domainName) VALUES (?)', [ALLOWED_DOMAIN]);
+		await connection.query('INSERT INTO organizations (orgID, name, createdAt) VALUES (?, ?, UTC_TIMESTAMP())', [TEST_ORG_ID, 'Test']);
+		await connection.query('INSERT INTO domain (domainName, orgID) VALUES (?, ?)', [ALLOWED_DOMAIN, TEST_ORG_ID]);
 	} finally {
 		await connection.end();
 	}

@@ -10,19 +10,19 @@ after(() => database.end());
 describe('database.transaction', () => {
 	it('commits the work when it resolves', async () => {
 		const result = await database.transaction(async connection => {
-			await connection.query('INSERT INTO domain (domainName) VALUES (?)', ['committed.test']);
+			await connection.query('INSERT INTO organizations (name, createdAt) VALUES (?, UTC_TIMESTAMP())', ['Committed']);
 			return 'done';
 		});
 		assert.equal(result, 'done');
-		assert.equal(await countRows('domain'), 2);
+		assert.equal(await countRows('organizations'), 2);
 	});
 
 	it('rolls back every statement when the work throws after the first insert', async () => {
 		await assert.rejects(database.transaction(async connection => {
-			await connection.query('INSERT INTO domain (domainName) VALUES (?)', ['rolled-back.test']);
+			await connection.query('INSERT INTO organizations (name, createdAt) VALUES (?, UTC_TIMESTAMP())', ['Rolled back']);
 			await connection.query('INSERT INTO no_such_table VALUES (1)');
 		}));
-		assert.equal(await countRows('domain'), 1);
+		assert.equal(await countRows('organizations'), 1);
 	});
 
 	it('releases connections: 10 failing transactions do not exhaust the pool of 5', async () => {

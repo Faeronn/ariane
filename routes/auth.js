@@ -48,12 +48,12 @@ router.post('/signup', signupPerIp, async (request, response) => {
 		if(!isUsernameValid(username)) return response.status(400).send({ message: 'Error : Invalid username.' });
 
 		const domain = username.split('@')[1];
-		const domainQuery = await database.query('SELECT * FROM domain WHERE domainName = ?', [domain]);
+		const domainQuery = await database.query('SELECT orgID FROM domain WHERE domainName = ?', [domain]);
 		if (domainQuery.length === 0) return response.status(403).send({ message: 'Error : Unable to signup.' });
 		
 		const hashedPassword = await bcrypt.hash(password, 10);
 
-		const signupQuery = await database.query('INSERT INTO users (username, password, firstname, lastname) VALUES (?, ?, ?, ?);', [username, hashedPassword, firstname, lastname]);
+		const signupQuery = await database.query('INSERT INTO users (orgID, username, password, firstname, lastname) VALUES (?, ?, ?, ?, ?);', [domainQuery[0].orgID, username, hashedPassword, firstname, lastname]);
 		if (signupQuery.affectedRows <= 0) return response.status(500).send({ message: 'Error : Unable to create User.' });
 
 		const verificationCode = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
@@ -67,6 +67,16 @@ router.post('/signup', signupPerIp, async (request, response) => {
 		return response.status(500).send({ message: 'Error : Unable to signup User.'});
 	}
 });
+
+// The first verified user of an organization without admin becomes its admin. The organization row
+// is locked so two users verifying at once cannot both see "no admin yet".
+async function promoteIfFirstAdmin(connection, userID) {
+	const [user] = await connection.query('SELECT orgID FROM users WHERE userID = ?', [userID]);
+	if (!user?.orgID) return;
+	await connection.query('SELECT orgID FROM organizations WHERE orgID = ? FOR UPDATE', [user.orgID]);
+	const admins = await connection.query('SELECT userID FROM users WHERE orgID = ? AND role = ? LIMIT 1', [user.orgID, 'admin']);
+	if (admins.length === 0) await connection.query('UPDATE users SET role = ? WHERE userID = ?', ['admin', userID]);
+}
 
 // The code is checked against its own user only, within MAX_VERIFY_ATTEMPTS and before its expiry.
 router.get('/verify', verifyPerIp, async (request, response) => {
@@ -90,8 +100,11 @@ router.get('/verify', verifyPerIp, async (request, response) => {
 		const isMatch = crypto.timingSafeEqual(Buffer.from(rows[0].verificationCode), Buffer.from(verificationCode));
 		if (!isMatch) return response.status(400).send({ message: INVALID_CODE_MESSAGE });
 
-		await database.query('UPDATE users SET isVerified = 1 WHERE userID = ?', [userID]);
-		await database.query('DELETE FROM verifications WHERE verificationID = ?', [verificationID]);
+		await database.transaction(async connection => {
+			await connection.query('UPDATE users SET isVerified = 1 WHERE userID = ?', [userID]);
+			await connection.query('DELETE FROM verifications WHERE verificationID = ?', [verificationID]);
+			await promoteIfFirstAdmin(connection, userID);
+		});
 		return response.status(200).send({ message: 'Email address verified.' });
 	} catch (error) {
 		request.log.error(error);

@@ -27,8 +27,8 @@ export async function api(baseUrl, method, path, { body, token, headers = {} } =
 	return { status: response.status, body: json, text, headers: response.headers };
 }
 
-export async function createUser(baseUrl, local = 'alice') {
-	const username = `${local}@${ALLOWED_DOMAIN}`;
+export async function createUser(baseUrl, local = 'alice', domain = ALLOWED_DOMAIN) {
+	const username = `${local}@${domain}`;
 	const response = await api(baseUrl, 'POST', '/auth/signup', { body: { username, password: PASSWORD, firstname: 'Test', lastname: 'User' } });
 	if (response.status !== 200) throw new Error(`signup failed: ${response.status} ${response.text}`);
 	return { username, userID: Number(response.body.user.userID) };
@@ -51,10 +51,22 @@ export async function signIn(baseUrl, username, password = PASSWORD) {
 	return { accessToken: response.body.accesstoken, refreshToken: response.body.refreshToken };
 }
 
-export async function createSignedInUser(baseUrl, local = 'alice') {
-	const user = await createUser(baseUrl, local);
+export async function createSignedInUser(baseUrl, local = 'alice', domain = ALLOWED_DOMAIN) {
+	const user = await createUser(baseUrl, local, domain);
 	await verifyUser(baseUrl, user);
 	return { ...user, ...(await signIn(baseUrl, user.username)) };
+}
+
+// A second organization owning `domainName`; returns its orgID.
+export async function createOrganization(name, domainName) {
+	const result = await database.query('INSERT INTO organizations (name, createdAt) VALUES (?, UTC_TIMESTAMP())', [name]);
+	const orgID = Number(result.insertId);
+	await database.query('INSERT INTO domain (domainName, orgID) VALUES (?, ?)', [domainName, orgID]);
+	return orgID;
+}
+
+export async function setRole(userID, role) {
+	await database.query('UPDATE users SET role = ? WHERE userID = ?', [role, userID]);
 }
 
 export async function countRows(table) {
