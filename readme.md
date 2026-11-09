@@ -127,6 +127,7 @@ Réponse de `GET /machines/:id/vulns` (triée par score CVSS décroissant, une e
       "cvssScore": 7.5,
       "published": "2022-03-15T17:15:08Z",
       "versionNormalized": false,
+      "platformDependent": false,
       "software": [{ "name": "openssl", "version": "3.0.0" }]
     }
   ],
@@ -136,6 +137,8 @@ Réponse de `GET /machines/:id/vulns` (triée par score CVSS décroissant, une e
 `unmappedSoftware` compte les logiciels du dernier snapshot sans CPE (pas encore résolus ou introuvables dans le NVD).
 
 Les versions de paquets de distribution sont associées au CPE de leur version amont (`3.0.11-1~deb12u2` => `3.0.11` : epoch, révision de paquet et suffixe `+dfsg` retirés). Les distributions corrigent souvent une faille par rétroportage sans changer la version amont : `versionNormalized: true` signale une CVE trouvée uniquement par ce biais, à vérifier auprès de l’avis de sécurité de la distribution.
+
+Certaines CVE ne s’appliquent que sur une plateforme donnée (« vulnérable seulement sous Windows »). Une telle CVE est retirée d’une machine dont le système (`osFamily`) n’est aucune des plateformes requises ; si la plateforme est inconnue ou correspond, la CVE reste listée avec `platformDependent: true`.
 
 
 ## 🧪 Tests

@@ -1,4 +1,5 @@
 import database from './database.js';
+import { platformsMayApply } from './platform.js';
 
 const LATEST_SNAPSHOT_OF = 'SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?';
 
@@ -6,7 +7,8 @@ const LATEST_SNAPSHOT_OF = 'SELECT MAX(snapshotID) FROM inventory_snapshot WHERE
 // per CVE with every affected software, highest CVSS first. Shared by the vulns route, the alerts
 // and the fleet summary.
 export async function machineVulnerabilities(machineID) {
-	const rows = await database.query(`SELECT c.cveID, c.severity, c.cvssScore, DATE_FORMAT(c.published, '%Y-%m-%dT%H:%i:%sZ') AS published, s.name, s.version, sc.versionNormalized
+	const [machine] = await database.query('SELECT osFamily FROM machines WHERE machineID = ?', [machineID]);
+	const rows = await database.query(`SELECT c.cveID, c.severity, c.cvssScore, DATE_FORMAT(c.published, '%Y-%m-%dT%H:%i:%sZ') AS published, s.name, s.version, sc.versionNormalized, cc.platforms
 		FROM installed_software s
 		INNER JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version AND sc.status = 'matched'
 		INNER JOIN cpe_cve cc ON cc.cpeName = sc.cpeName
@@ -16,11 +18,17 @@ export async function machineVulnerabilities(machineID) {
 
 	// versionNormalized: every affected software was matched on its upstream version only, so a
 	// distribution backport may already fix it. One exact-version match confirms the CVE.
+	// platformDependent: every link needs a platform the machine may or may not run; links whose
+	// platforms are all known OS families other than the machine's are dropped.
 	const vulnerabilities = new Map();
-	for (const { cveID, severity, cvssScore, published, name, version, versionNormalized } of rows) {
-		if (!vulnerabilities.has(cveID)) vulnerabilities.set(cveID, { cveID, severity, cvssScore: cvssScore === null ? undefined : Number(cvssScore), published, versionNormalized: true, software: [] });
+	for (const { cveID, severity, cvssScore, published, name, version, versionNormalized, platforms } of rows) {
+		const required = platforms ? JSON.parse(platforms) : [];
+		if (required.length > 0 && !platformsMayApply(required, machine?.osFamily)) continue;
+
+		if (!vulnerabilities.has(cveID)) vulnerabilities.set(cveID, { cveID, severity, cvssScore: cvssScore === null ? undefined : Number(cvssScore), published, versionNormalized: true, platformDependent: true, software: [] });
 		const vulnerability = vulnerabilities.get(cveID);
 		vulnerability.versionNormalized &&= Boolean(versionNormalized);
+		vulnerability.platformDependent &&= required.length > 0;
 		vulnerability.software.push({ name, version });
 	}
 	return [...vulnerabilities.values()];
