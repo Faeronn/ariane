@@ -73,18 +73,29 @@ npm run dev
 | POST    | /auth/refresh   | Nouveau access token |
 | POST    | /auth/logout    | Révocation refresh   |
 
+Les routes d’authentification sont limitées en débit (connexion : 10 essais / 15 min par compte et 50 par adresse IP ; inscription : 5 / h ; vérification : 10 / 15 min). Au-delà : `429 { "message": "Error : Too many requests." }` avec l’en-tête `Retry-After`.
+
+#### 🏢 Organisations et rôles
+
+Chaque domaine email autorisé (table `domain`) appartient à une organisation : un utilisateur rejoint à l’inscription l’organisation de son domaine, et ne voit que les machines de son organisation. Le premier utilisateur vérifié d’une organisation en devient `admin`, les suivants sont `viewer` (lecture seule). Seuls les admins enrôlent, révoquent et changent les rôles.
+
+| Méthode | Route            | Rôle   | Description |
+|---------|------------------|--------|-------------|
+| GET     | /users           | membre | Membres de l’organisation |
+| PATCH   | /users/:id/role  | admin  | `{ "role": "admin" \| "viewer" }` ; une organisation garde toujours au moins un admin (sinon 409) |
+
 #### 🖥️ Inventaire
 
-| Méthode | Route                 | Description                  |
-|---------|-----------------------|------------------------------|
-| POST    | /machines             | Enrôlement : renvoie `machineID` et la clé agent (affichée une seule fois) |
-| DELETE  | /machines/:id         | Révocation de la machine et de sa clé agent |
-| POST    | /agents/inventory     | Envoi snapshot machine       |
-| GET     | /machines             | Liste des machines           |
-| GET     | /machines/:id         | Détails machine              |
-| GET     | /machines/:id/vulns   | Vulnérabilités détectées     |
+| Méthode | Route                 | Rôle   | Description                  |
+|---------|-----------------------|--------|------------------------------|
+| POST    | /machines             | admin  | Enrôlement : renvoie `machineID` et la clé agent (affichée une seule fois) |
+| DELETE  | /machines/:id         | admin  | Révocation de la machine et de sa clé agent |
+| POST    | /agents/inventory     | agent  | Envoi snapshot machine (30 / h par machine) |
+| GET     | /machines             | membre | Liste des machines           |
+| GET     | /machines/:id         | membre | Détails machine              |
+| GET     | /machines/:id/vulns   | membre | Vulnérabilités détectées     |
 
-Les routes `/machines` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée.
+Les routes `/machines` et `/users` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
 
 Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et `version` facultatifs) :
 ```json
