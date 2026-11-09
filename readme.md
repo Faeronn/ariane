@@ -94,8 +94,9 @@ Chaque domaine email autorisé (table `domain`) appartient à une organisation :
 | GET     | /machines             | membre | Liste des machines           |
 | GET     | /machines/:id         | membre | Détails machine              |
 | GET     | /machines/:id/vulns   | membre | Vulnérabilités détectées     |
+| GET     | /software/unmapped    | membre | Logiciels sans CPE des machines actives (dernier snapshot), du plus répandu au moins répandu : ce qui échappe à la détection |
 
-Les routes `/machines` et `/users` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
+Les routes `/machines`, `/users` et `/software` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
 
 Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et `version` facultatifs) :
 ```json
