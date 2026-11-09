@@ -160,7 +160,9 @@ describe('GET /auth/verify', () => {
 	});
 
 	it('the old POST /auth/verify/:code route is gone', async () => {
-		assert.equal(await statusOf(api(server.baseUrl, 'POST', '/auth/verify/123456')), 404);
+		const response = await api(server.baseUrl, 'POST', '/auth/verify/123456');
+		assert.equal(response.status, 404);
+		assert.deepEqual(response.body, { message: 'Error : Not found.' });
 	});
 });
 

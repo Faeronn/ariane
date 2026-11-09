@@ -1,4 +1,5 @@
 import errorHandler from './middleware/error-handler.js';
+import notFound from './middleware/not-found.js';
 import jsonBody, { createJsonBody } from './middleware/json-body.js';
 import machinesRouter from './routes/machines.js';
 import agentsRouter from './routes/agents.js';
@@ -42,6 +43,7 @@ app.use('/auth', cors(), authRouter);
 app.use('/machines', cors(), machinesRouter);
 app.use('/agents', agentsRouter);
 
+app.use(notFound);
 app.use(errorHandler);
 
 if (import.meta.main) {
