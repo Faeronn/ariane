@@ -126,6 +126,7 @@ Les logiciels reçus sont associés à un CPE puis à leurs CVE par des jobs NVD
       "severity": "HIGH",
       "cvssScore": 7.5,
       "published": "2022-03-15T17:15:08Z",
+      "versionNormalized": false,
       "software": [{ "name": "openssl", "version": "3.0.0" }]
     }
   ],
@@ -133,6 +134,8 @@ Les logiciels reçus sont associés à un CPE puis à leurs CVE par des jobs NVD
 }
 ```
 `unmappedSoftware` compte les logiciels du dernier snapshot sans CPE (pas encore résolus ou introuvables dans le NVD).
+
+Les versions de paquets de distribution sont associées au CPE de leur version amont (`3.0.11-1~deb12u2` => `3.0.11` : epoch, révision de paquet et suffixe `+dfsg` retirés). Les distributions corrigent souvent une faille par rétroportage sans changer la version amont : `versionNormalized: true` signale une CVE trouvée uniquement par ce biais, à vérifier auprès de l’avis de sécurité de la distribution.
 
 
 ## 🧪 Tests

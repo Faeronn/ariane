@@ -58,7 +58,7 @@ router.get('/:id/vulns', async (request, response) => {
 		const machines = await database.query('SELECT machineID FROM machines WHERE machineID = ?', [machineID]);
 		if (machines.length === 0) return response.status(404).send({ message: 'Error : Machine not found.' });
 
-		const rows = await database.query(`SELECT c.cveID, c.severity, c.cvssScore, ${isoUtc('c.published')} AS published, s.name, s.version
+		const rows = await database.query(`SELECT c.cveID, c.severity, c.cvssScore, ${isoUtc('c.published')} AS published, s.name, s.version, sc.versionNormalized
 			FROM installed_software s
 			INNER JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version AND sc.status = 'matched'
 			INNER JOIN cpe_cve cc ON cc.cpeName = sc.cpeName
@@ -70,10 +70,14 @@ router.get('/:id/vulns', async (request, response) => {
 			LEFT JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
 			WHERE s.snapshotID = (${LATEST_SNAPSHOT_OF}) AND (sc.status IS NULL OR sc.status <> 'matched')`, [machineID]);
 
+		// versionNormalized: every affected software was matched on its upstream version only, so a
+		// distribution backport may already fix it. One exact-version match confirms the CVE.
 		const vulnerabilities = new Map();
-		for (const { cveID, severity, cvssScore, published, name, version } of rows) {
-			if (!vulnerabilities.has(cveID)) vulnerabilities.set(cveID, { cveID, severity, cvssScore: cvssScore === null ? undefined : Number(cvssScore), published, software: [] });
-			vulnerabilities.get(cveID).software.push({ name, version });
+		for (const { cveID, severity, cvssScore, published, name, version, versionNormalized } of rows) {
+			if (!vulnerabilities.has(cveID)) vulnerabilities.set(cveID, { cveID, severity, cvssScore: cvssScore === null ? undefined : Number(cvssScore), published, versionNormalized: true, software: [] });
+			const vulnerability = vulnerabilities.get(cveID);
+			vulnerability.versionNormalized &&= Boolean(versionNormalized);
+			vulnerability.software.push({ name, version });
 		}
 
 		return response.status(200).send({ message: 'Vulnerabilities retrieved.', vulnerabilities: [...vulnerabilities.values()], unmappedSoftware: Number(unmapped) });

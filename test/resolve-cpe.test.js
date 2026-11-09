@@ -2,7 +2,7 @@ import { describe, it, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { api, createSignedInUser, captureLogs } from './helpers/fixtures.js';
 import { startNvdStub, loadFixture } from './helpers/nvd-stub.js';
-import { runOnce, pickCpe } from '../jobs/resolve-cpe.js';
+import { runOnce, pickCpe, upstreamVersion } from '../jobs/resolve-cpe.js';
 import { createNvdClient } from '../utils/nvd.js';
 import { startServer } from './helpers/server.js';
 import { reset } from './helpers/database.js';
@@ -61,6 +61,23 @@ describe('resolve-cpe runOnce', () => {
 		const row = await keyRow('openssl');
 		assert.equal(row.status, 'matched');
 		assert.equal(row.cpeName, OPENSSL_CPE);
+	});
+
+	it('matches a distribution package on its upstream version and flags it', async () => {
+		await database.query('UPDATE software_cpe SET version = ? WHERE name = ?', ['3.0.0-1~deb12u2', 'openssl']);
+		stub.route('/cpes/2.0', 'openssl 3.0.0', loadFixture('cpes-openssl-3.0.0.json'));
+		await runOnce({ client });
+		const [row] = await database.query('SELECT cpeName, status, versionNormalized FROM software_cpe WHERE name = ?', ['openssl']);
+		assert.equal(row.status, 'matched');
+		assert.equal(row.cpeName, OPENSSL_CPE);
+		assert.equal(Number(row.versionNormalized), 1);
+	});
+
+	it('does not flag an exact version match', async () => {
+		stub.route('/cpes/2.0', 'openssl 3.0.0', loadFixture('cpes-openssl-3.0.0.json'));
+		await runOnce({ client });
+		const [row] = await database.query('SELECT versionNormalized FROM software_cpe WHERE name = ?', ['openssl']);
+		assert.equal(Number(row.versionNormalized), 0);
 	});
 
 	it('marks an unknown tool unmatched with lastCheckedAt set', async () => {
@@ -131,5 +148,21 @@ describe('pickCpe', () => {
 		];
 		assert.equal(pickCpe({ vendor: '', name: 'tool', version: '1.0' }, ambiguous), undefined);
 		assert.equal(pickCpe({ vendor: 'acme', name: 'tool', version: '1.0' }, ambiguous), 'cpe:2.3:a:acme:tool:1.0:*:*:*:*:*:*:*');
+	});
+});
+
+describe('upstreamVersion', () => {
+	it('drops distribution revisions, epochs and repack suffixes', () => {
+		assert.equal(upstreamVersion('3.0.11-1~deb12u2'), '3.0.11');
+		assert.equal(upstreamVersion('3.0.2-0ubuntu1.15'), '3.0.2');
+		assert.equal(upstreamVersion('3.0.7-27.el9'), '3.0.7');
+		assert.equal(upstreamVersion('1:9.18.24-1'), '9.18.24');
+		assert.equal(upstreamVersion('2.4.1+dfsg-3'), '2.4.1');
+	});
+
+	it('keeps plain and pre-release versions', () => {
+		assert.equal(upstreamVersion('3.0.0'), '3.0.0');
+		assert.equal(upstreamVersion('3.0.0-beta1'), '3.0.0-beta1');
+		assert.equal(upstreamVersion('122.0.6261.112'), '122.0.6261.112');
 	});
 });

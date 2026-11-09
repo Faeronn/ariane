@@ -131,6 +131,7 @@ CREATE TABLE `software_cpe`  (
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `version` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
   `cpeName` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NULL DEFAULT NULL,
+  `versionNormalized` tinyint(1) NOT NULL DEFAULT 0,
   `status` enum('pending','matched','unmatched') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT 'pending',
   `lastCheckedAt` datetime NULL DEFAULT NULL,
   `cvesCheckedAt` datetime NULL DEFAULT NULL,

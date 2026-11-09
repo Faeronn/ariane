@@ -18,6 +18,13 @@ function parseCpe(cpeName) {
 // Software names use spaces, CPE products use underscores.
 const toCpeToken = value => value.trim().toLowerCase().replaceAll(/\s+/g, '_');
 
+// Distribution package version => upstream version: drop the epoch (`1:`), the packaging revision
+// after the last hyphen when it starts with a digit (Debian `-1~deb12u2`, Ubuntu `-0ubuntu1.4`,
+// RPM `-27.el9`) and a repack suffix (`+dfsg`). `3.0.0-beta1` stays as is.
+export function upstreamVersion(version) {
+	return version.replace(/^\d+:/, '').replace(/-\d[^-]*$/, '').replace(/\+(?:dfsg|ds)\d*$/, '');
+}
+
 // Pick the CPE of `software` among NVD search results: same product and exact version, a release
 // (no alpha/beta update), vendor matching when the inventory gave one, deprecated names replaced
 // by their successor. Returns the cpeName only when exactly one remains, else undefined.
@@ -51,9 +58,12 @@ export async function runOnce({ client = getNvdClient(), batchSize = BATCH_SIZE 
 			ORDER BY lastCheckedAt IS NOT NULL, lastCheckedAt, softwareCpeID LIMIT ?`, [RETRY_UNMATCHED_AFTER_DAYS, batchSize]);
 
 		for (const key of keys) {
-			const products = key.version ? await client.searchCpes(`${key.name} ${key.version}`) : [];
-			const cpeName = pickCpe(key, products);
-			await database.query(`UPDATE software_cpe SET cpeName = NULLIF(?, ''), status = ?, lastCheckedAt = UTC_TIMESTAMP() WHERE softwareCpeID = ?`, [cpeName ?? '', cpeName ? 'matched' : 'unmatched', key.softwareCpeID]);
+			// A packaged version is matched on its upstream one; distributions often backport fixes
+			// without changing it, so such matches are flagged for review rather than trusted.
+			const version = upstreamVersion(key.version);
+			const products = version ? await client.searchCpes(`${key.name} ${version}`) : [];
+			const cpeName = pickCpe({ ...key, version }, products);
+			await database.query(`UPDATE software_cpe SET cpeName = NULLIF(?, ''), versionNormalized = ?, status = ?, lastCheckedAt = UTC_TIMESTAMP() WHERE softwareCpeID = ?`, [cpeName ?? '', version !== key.version, cpeName ? 'matched' : 'unmatched', key.softwareCpeID]);
 			summary[cpeName ? 'matched' : 'unmatched'] += 1;
 		}
 	} catch (error) {

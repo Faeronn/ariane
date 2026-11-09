@@ -57,7 +57,20 @@ describe('GET /machines/:id/vulns', () => {
 		assert.equal(first.cvssScore, 7.5);
 		assert.match(first.published, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
 		assert.deepEqual(first.software, [{ name: 'openssl', version: '3.0.0' }]);
+		assert.equal(first.versionNormalized, false);
 		assert.equal(response.body.unmappedSoftware, 0);
+	});
+
+	it('flags a CVE as versionNormalized only when no exact-version software confirms it', async () => {
+		await push([{ name: 'openssl', vendor: 'openssl', version: '3.0.0-1~deb12u2' }, { name: 'libssl3', vendor: 'debian', version: '3.0.0' }]);
+		await mapSoftware('openssl', OPENSSL_CPE);
+		await mapSoftware('libssl3', LIBSSL_CPE);
+		await database.query('UPDATE software_cpe SET versionNormalized = 1 WHERE name = ?', ['openssl']);
+		await seedCve('CVE-2000-0001', 5, [OPENSSL_CPE]);
+		await seedCve('CVE-2000-0002', 9.8, [OPENSSL_CPE, LIBSSL_CPE]);
+
+		const { body } = await getVulns();
+		assert.deepEqual(body.vulnerabilities.map(({ cveID, versionNormalized }) => `${cveID}:${versionNormalized}`), ['CVE-2000-0002:false', 'CVE-2000-0001:true']);
 	});
 
 	it('lists a CVE hitting 2 installed software once with both, sorted by score', async () => {
