@@ -1,0 +1,499 @@
+{
+  "advisories": {
+    "symfony/mime": [
+      {
+        "advisoryId": "PKSA-wtxr-p26d-nn42",
+        "packageName": "symfony/mime",
+        "remoteId": "symfony/mime/CVE-2026-45070.yaml",
+        "title": "CVE-2026-45070: Email Header Injection via Non-Token Characters in Mime Parameter Names",
+        "link": "https://symfony.com/cve-2026-45070",
+        "cve": "CVE-2026-45070",
+        "affectedVersions": ">=2.0.0,<3.0.0|>=3.0.0,<4.0.0|>=4.0.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2.0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.55|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.49|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.22|>=8.0.0,<8.1.0|>=8.1.0,<8.1.10",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2026-10-28 18:08:54",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-vqc8-7275-q272"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/mime/CVE-2026-45070.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-2n2k-66v2-bwg3",
+        "packageName": "symfony/mime",
+        "remoteId": "symfony/mime/CVE-2026-45067.yaml",
+        "title": "CVE-2026-45067: Email Header / SMTP Command Injection via CRLF in Symfony\\Component\\Mime\\Address",
+        "link": "https://symfony.com/cve-2026-45067",
+        "cve": "CVE-2026-45067",
+        "affectedVersions": ">=2.0.0,<3.0.0|>=3.0.0,<4.0.0|>=4.0.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2.0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.52|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.40|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.12|>=8.0.0,<8.0.12",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2026-05-20 08:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "high",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-qpmx-3rfj-7rhv"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/mime/CVE-2026-45067.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-7y15-t1fp-w94f",
+        "packageName": "symfony/mime",
+        "remoteId": "symfony/mime/CVE-2019-18888.yaml",
+        "title": "CVE-2019-18888: Prevent argument injection in a MimeTypeGuesser",
+        "link": "https://symfony.com/cve-2019-18888",
+        "cve": "CVE-2019-18888",
+        "affectedVersions": ">=4.3.0,<4.3.8",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2019-11-13 08:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "high",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-xhh6-956q-4q69"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/mime/CVE-2019-18888.yaml"
+          }
+        ]
+      }
+    ],
+    "symfony/http-foundation": [
+      {
+        "advisoryId": "PKSA-nxjs-s6hn-vb6m",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2026-121619.yaml",
+        "title": "The \"private_ranges\" Trusted Proxies Shortcut Trusts Clients Presenting an IPv4-Mapped, 6to4, Teredo or NAT64 Address as Reverse Proxies",
+        "link": "https://github.com/symfony/symfony/security/advisories/GHSA-xg2q-4rrq-657q",
+        "cve": "CVE-2026-121619",
+        "affectedVersions": ">=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2026-11-04 11:26:51",
+        "composerRepository": "https://packagist.org",
+        "severity": null,
+        "sources": [
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2026-121619.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-24ph-xkrh-y79j",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2026-118514.yaml",
+        "title": "CVE-2026-118514: HEAD Requests Bypass the methods Option of security.access_control Rules and Firewalls: Incomplete Fix for CVE-2026-45075",
+        "link": "https://symfony.com/cve-2026-118514",
+        "cve": "CVE-2026-118514",
+        "affectedVersions": ">=2.0.0,<3.0.0|>=3.0.0,<4.0.0|>=4.0.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2.0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.56|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.50|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2026-11-04 10:45:07",
+        "composerRepository": "https://packagist.org",
+        "severity": null,
+        "sources": [
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2026-118514.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-pr6q-2w5s-kzzf",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/2026-11-04-21.yaml",
+        "title": "Path Rules Enforced in Front of PHP Can Be Bypassed by Appending the Path to the Script Name",
+        "link": "https://github.com/symfony/symfony/security/advisories/GHSA-3h27-hjv7-fqjx",
+        "cve": null,
+        "affectedVersions": ">=5.4.50,<5.4.56|>=6.4.29,<6.4.50|>=7.3.7,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2026-11-04 00:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": null,
+        "sources": [
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/2026-11-04-21.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-b2gg-vk1g-6d5q",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/2026-11-04-22.yaml",
+        "title": "Generated URLs Can Point to a Host Chosen by the Client",
+        "link": "https://github.com/symfony/symfony/security/advisories/GHSA-5mx8-mwrp-5693",
+        "cve": null,
+        "affectedVersions": ">=2.0.0,<2.1.0|>=2.1.0,<2.2.0|>=2.2.0,<2.3.0|>=2.3.0,<2.4.0|>=2.4.0,<2.5.0|>=2.5.0,<2.6.0|>=2.6.0,<2.7.0|>=2.7.0,<2.8.0|>=2.8.0,<3.0.0|>=3.0.0,<3.1.0|>=3.1.0,<3.2.0|>=3.2.0,<3.3.0|>=3.3.0,<3.4.0|>=3.4.0,<4.0.0|>=4.0.0,<4.1.0|>=4.1.0,<4.2.0|>=4.2.0,<4.3.0|>=4.3.0,<4.4.0|>=4.4.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2.0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.56|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.50|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.23|>=8.0.0,<8.1.0|>=8.1.0,<8.1.11",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2026-11-04 00:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": null,
+        "sources": [
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/2026-11-04-22.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-xmwy-rmx5-m7h4",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2026-108082.yaml",
+        "title": "CVE-2026-108082: ReDoS in HeaderUtils::split() Reachable Through the Cache-Control Request Header",
+        "link": "https://symfony.com/cve-2026-108082",
+        "cve": "CVE-2026-108082",
+        "affectedVersions": ">=5.4.1,<5.4.54|>=6.0.1,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.46|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.19|>=8.0.0,<8.1.0|>=8.1.0,<8.1.7",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2026-09-15 08:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "high",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-r925-mgvr-h9cc"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2026-108082.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-y6py-qpv1-h52p",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2026-48736.yaml",
+        "title": "CVE-2026-48736: IpUtils::PRIVATE_SUBNETS Omits IPv6 Transition Forms (6to4, NAT64, Teredo, IPv4-compatible): SSRF Bypass in NoPrivateNetworkHttpClient",
+        "link": "https://symfony.com/cve-2026-48736",
+        "cve": "CVE-2026-48736",
+        "affectedVersions": ">=6.4.0,<6.4.41|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3.0|>=7.3.0,<7.4.0|>=7.4.0,<7.4.13|>=8.0.0,<8.0.13",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2026-05-26 08:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-38cx-cq6f-5755"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2026-48736.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-365x-2zjk-pt47",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2025-64500.yaml",
+        "title": "CVE-2025-64500: Incorrect parsing of PATH_INFO can lead to limited authorization bypass",
+        "link": "https://symfony.com/blog/cve-2025-64500-incorrect-parsing-of-path-info-can-lead-to-limited-authorization-bypass",
+        "cve": "CVE-2025-64500",
+        "affectedVersions": ">=2.0.0,<3.0.0|>=3.0.0,<4.0.0|>=4.0.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2.0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.50|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.29|>=7.0.0,<7.1.0|>=7.1.0,<7.2.0|>=7.2.0,<7.3.0|>=7.3.0,<7.3.7",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2025-11-12 11:09:14",
+        "composerRepository": "https://packagist.org",
+        "severity": "high",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-3rg7-wf37-54rm"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2025-64500.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-b35n-565h-rs4q",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2024-50345.yaml",
+        "title": "CVE-2024-50345: Open redirect via browser-sanitized URLs",
+        "link": "https://symfony.com/cve-2024-50345",
+        "cve": "CVE-2024-50345",
+        "affectedVersions": ">=2.0.0,<3.0.0|>=3.0.0,<4.0.0|>=4.0.0,<5.0.0|>=5.0.0,<5.1.0|>=5.1.0,<5.2.0|>=5.2.0,<5.3.0|>=5.3.0,<5.4.0|>=5.4.0,<5.4.46|>=6.0.0,<6.1.0|>=6.1.0,<6.2.0|>=6.2.0,<6.3.0|>=6.3.0,<6.4.0|>=6.4.0,<6.4.14|>=7.0.0,<7.1.0|>=7.1.0,<7.1.7",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2024-11-05 08:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "low",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-mrqx-rp3w-jpjp"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2024-50345.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-t4rz-hp2g-57t1",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2020-5255.yaml",
+        "title": "CVE-2020-5255: Prevent cache poisoning via a Response Content-Type header",
+        "link": "https://symfony.com/cve-2020-5255",
+        "cve": "CVE-2020-5255",
+        "affectedVersions": ">=4.4.0,<4.4.7|>=5.0.0,<5.0.7",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2020-03-30 14:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "low",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-mcx4-f5f5-4859"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2020-5255.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-9w98-4rwq-spxr",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2019-18888.yaml",
+        "title": "CVE-2019-18888: Prevent argument injection in a MimeTypeGuesser",
+        "link": "https://symfony.com/cve-2019-18888",
+        "cve": "CVE-2019-18888",
+        "affectedVersions": ">=2.0.0,<2.1.0|>=2.1.0,<2.2.0|>=2.2.0,<2.3.0|>=2.3.0,<2.4.0|>=2.4.0,<2.5.0|>=2.5.0,<2.6.0|>=2.6.0,<2.7.0|>=2.7.0,<2.8.0|>=2.8.0,<2.8.52|>=3.0.0,<3.1.0|>=3.1.0,<3.2.0|>=3.2.0,<3.3.0|>=3.3.0,<3.4.0|>=3.4.0,<3.4.35|>=4.0.0,<4.1.0|>=4.1.0,<4.2.0|>=4.2.0,<4.2.12|>=4.3.0,<4.3.8",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2019-11-13 08:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "high",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-xhh6-956q-4q69"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2019-18888.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-324d-pqmd-hptz",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2019-10913.yaml",
+        "title": "CVE-2019-10913: Reject invalid HTTP method overrides",
+        "link": "https://symfony.com/cve-2019-10913",
+        "cve": "CVE-2019-10913",
+        "affectedVersions": ">=2.7.0,<2.7.51|>=2.8.0,<2.8.50|>=3.0.0,<3.1.0|>=3.1.0,<3.2.0|>=3.2.0,<3.3.0|>=3.3.0,<3.4.0|>=3.4.0,<3.4.26|>=4.0.0,<4.1.0|>=4.1.0,<4.1.12|>=4.2.0,<4.2.7",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2019-04-16 10:45:11",
+        "composerRepository": "https://packagist.org",
+        "severity": "critical",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-x92h-wmg2-6hp7"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2019-10913.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-nqj4-v43p-2gxc",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2018-14773.yaml",
+        "title": "CVE-2018-14773: Remove support for legacy and risky HTTP headers",
+        "link": "https://symfony.com/blog/cve-2018-14773-remove-support-for-legacy-and-risky-http-headers",
+        "cve": "CVE-2018-14773",
+        "affectedVersions": ">=2.0.0,<2.1.0|>=2.1.0,<2.2.0|>=2.2.0,<2.3.0|>=2.3.0,<2.4.0|>=2.4.0,<2.5.0|>=2.5.0,<2.6.0|>=2.6.0,<2.7.0|>=2.7.0,<2.7.49|>=2.8.0,<2.8.44|>=3.0.0,<3.1.0|>=3.1.0,<3.2.0|>=3.2.0,<3.3.0|>=3.3.0,<3.3.18|>=3.4.0,<3.4.14|>=4.0.0,<4.0.14|>=4.1.0,<4.1.3",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2018-08-01 15:57:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-8wgj-6wx8-h5hq"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2018-14773.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-f8b8-pbjy-s9k8",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2018-11386.yaml",
+        "title": "CVE-2018-11386: Denial of service when using PDOSessionHandler",
+        "link": "https://symfony.com/cve-2018-11386",
+        "cve": "CVE-2018-11386",
+        "affectedVersions": ">=2.0.0,<2.1.0|>=2.1.0,<2.2.0|>=2.2.0,<2.3.0|>=2.3.0,<2.4.0|>=2.4.0,<2.5.0|>=2.5.0,<2.6.0|>=2.6.0,<2.7.0|>=2.7.0,<2.7.48|>=2.8.0,<2.8.41|>=3.0.0,<3.1.0|>=3.1.0,<3.2.0|>=3.2.0,<3.3.0|>=3.3.0,<3.3.17|>=3.4.0,<3.4.11|>=4.0.0,<4.0.11",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2018-05-25 11:46:22",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-r2rq-3h56-fqm4"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2018-11386.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-md26-zdw9-222r",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2015-2309.yaml",
+        "title": "Unsafe methods in the Request class",
+        "link": "https://symfony.com/cve-2015-2309",
+        "cve": "CVE-2015-2309",
+        "affectedVersions": ">=2.0.0,<2.1.0|>=2.1.0,<2.2.0|>=2.2.0,<2.3.0|>=2.3.0,<2.3.27|>=2.4.0,<2.5.0|>=2.5.0,<2.5.11|>=2.6.0,<2.6.6",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2015-04-01 18:55:26",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-p684-f7fh-jv2j"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2015-2309.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-dr6c-z2rf-wh36",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2014-6061.yaml",
+        "title": "Security issue when parsing the Authorization header",
+        "link": "https://symfony.com/cve-2014-6061",
+        "cve": "CVE-2014-6061",
+        "affectedVersions": ">=2.0.0,<2.1.0|>=2.1.0,<2.2.0|>=2.2.0,<2.3.0|>=2.3.0,<2.3.19|>=2.4.0,<2.4.9|>=2.5.0,<2.5.4",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2014-09-03 07:38:23",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-h7v2-2qwg-h829"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2014-6061.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-rhzp-d9k8-shyq",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2014-5244.yaml",
+        "title": "Denial of service with a malicious HTTP Host header",
+        "link": "https://symfony.com/cve-2014-5244",
+        "cve": "CVE-2014-5244",
+        "affectedVersions": ">=2.0.0,<2.1.0|>=2.1.0,<2.2.0|>=2.2.0,<2.3.0|>=2.3.0,<2.3.19|>=2.4.0,<2.4.9|>=2.5.0,<2.5.4",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2014-09-03 07:37:21",
+        "composerRepository": "https://packagist.org",
+        "severity": "high",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-v77v-x634-9m56"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2014-5244.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-tf6z-kynr-311v",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2013-4752.yaml",
+        "title": "Request::getHost() poisoning",
+        "link": "https://symfony.com/blog/security-releases-symfony-2-0-24-2-1-12-2-2-5-and-2-3-3-released",
+        "cve": "CVE-2013-4752",
+        "affectedVersions": ">=2.0.0,<2.0.24|>=2.1.0,<2.1.12|>=2.2.0,<2.2.5|>=2.3.0,<2.3.3",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2013-08-17 09:14:49",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-22pv-7v9j-hqxp"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2013-4752.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-hd3k-4852-jhv2",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/2012-11-29.yaml",
+        "title": "Request::getClientIp() when the trust proxy mode is enabled",
+        "link": "https://symfony.com/blog/security-release-symfony-2-0-19-and-2-1-4",
+        "cve": null,
+        "affectedVersions": ">=2.0.0,<2.0.19|>=2.1.0,<2.1.4",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2012-11-29 00:00:00",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-vfm6-r2gc-pwww"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/2012-11-29.yaml"
+          }
+        ]
+      },
+      {
+        "advisoryId": "PKSA-msdq-r83n-tdy4",
+        "packageName": "symfony/http-foundation",
+        "remoteId": "symfony/http-foundation/CVE-2012-6431.yaml",
+        "title": "Routes behind a firewall are accessible even when not logged in",
+        "link": "https://symfony.com/blog/security-release-symfony-2-0-20-and-2-1-5-released",
+        "cve": "CVE-2012-6431",
+        "affectedVersions": ">=2.0.0,<2.0.19",
+        "source": "FriendsOfPHP/security-advisories",
+        "reportedAt": "2012-03-19 15:59:52",
+        "composerRepository": "https://packagist.org",
+        "severity": "medium",
+        "sources": [
+          {
+            "name": "GitHub",
+            "remoteId": "GHSA-83c3-qx27-2rwr"
+          },
+          {
+            "name": "FriendsOfPHP/security-advisories",
+            "remoteId": "symfony/http-foundation/CVE-2012-6431.yaml"
+          }
+        ]
+      }
+    ],
+    "phpoffice/phpword": []
+  }
+}

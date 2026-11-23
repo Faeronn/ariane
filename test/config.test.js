@@ -56,6 +56,11 @@ describe('validateConfig', () => {
 		assert.match(validateConfig({ ...PRODUCTION, OSV_BASE_URL: 'api.osv.dev' }).errors[0], /OSV_BASE_URL must be an http\(s\) URL/);
 	});
 
+	it('refuses a PACKAGIST_BASE_URL that is not an http(s) URL', () => {
+		assert.deepEqual(validateConfig({ ...PRODUCTION, PACKAGIST_BASE_URL: 'https://packagist.org' }).errors, []);
+		assert.equal(validateConfig({ ...PRODUCTION, PACKAGIST_BASE_URL: 'packagist.org' }).errors.length, 1);
+	});
+
 	it('warns about the NVD rate limit when jobs run without a key', () => {
 		const { errors, warnings } = validateConfig(without('NVD_API_KEY'));
 		assert.deepEqual(errors, []);

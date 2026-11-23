@@ -26,9 +26,14 @@ function checkNvd(environment, report) {
 	report.warnings.push('NVD_API_KEY is not set: NVD allows only 5 requests per 30 s, CPE and CVE resolution will be slow. Free key: https://nvd.nist.gov/developers/request-an-api-key');
 }
 
+const isHttpUrl = value => URL.canParse(value) && /^https?:$/.test(new URL(value).protocol);
+
 function checkOsv(environment, report) {
-	if (!isSet(environment, 'OSV_BASE_URL')) return;
-	if (!URL.canParse(environment.OSV_BASE_URL) || !/^https?:$/.test(new URL(environment.OSV_BASE_URL).protocol)) report.errors.push('OSV_BASE_URL must be an http(s) URL such as https://api.osv.dev.');
+	if (isSet(environment, 'OSV_BASE_URL') && !isHttpUrl(environment.OSV_BASE_URL)) report.errors.push('OSV_BASE_URL must be an http(s) URL such as https://api.osv.dev.');
+}
+
+function checkPackagist(environment, report) {
+	if (isSet(environment, 'PACKAGIST_BASE_URL') && !isHttpUrl(environment.PACKAGIST_BASE_URL)) report.errors.push('PACKAGIST_BASE_URL must be an http(s) URL such as https://packagist.org.');
 }
 
 function checkCors(environment, report) {
@@ -50,7 +55,7 @@ function checkNodeEnvironment(environment, report) {
 	if (isSet(environment, 'NODE_ENV') && !NODE_ENVS.has(environment.NODE_ENV)) report.warnings.push(`NODE_ENV="${environment.NODE_ENV}" is not production, development or test: the server runs as development.`);
 }
 
-const RULES = [checkRequired, checkMail, checkNvd, checkOsv, checkCors, checkTrustProxy, checkRetention, checkNodeEnvironment];
+const RULES = [checkRequired, checkMail, checkNvd, checkOsv, checkPackagist, checkCors, checkTrustProxy, checkRetention, checkNodeEnvironment];
 
 export function validateConfig(environment = process.env) {
 	const report = { errors: [], warnings: [] };
