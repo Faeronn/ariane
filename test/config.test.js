@@ -51,6 +51,11 @@ describe('validateConfig', () => {
 		assert.deepEqual(validateConfig({ ...PRODUCTION, NODE_ENV: 'development' }).warnings, []);
 	});
 
+	it('refuses an OSV_BASE_URL that is not an http(s) URL', () => {
+		assert.deepEqual(validateConfig({ ...PRODUCTION, OSV_BASE_URL: 'http://127.0.0.1:8080' }).errors, []);
+		assert.match(validateConfig({ ...PRODUCTION, OSV_BASE_URL: 'api.osv.dev' }).errors[0], /OSV_BASE_URL must be an http\(s\) URL/);
+	});
+
 	it('warns about the NVD rate limit when jobs run without a key', () => {
 		const { errors, warnings } = validateConfig(without('NVD_API_KEY'));
 		assert.deepEqual(errors, []);

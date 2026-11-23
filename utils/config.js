@@ -26,6 +26,11 @@ function checkNvd(environment, report) {
 	report.warnings.push('NVD_API_KEY is not set: NVD allows only 5 requests per 30 s, CPE and CVE resolution will be slow. Free key: https://nvd.nist.gov/developers/request-an-api-key');
 }
 
+function checkOsv(environment, report) {
+	if (!isSet(environment, 'OSV_BASE_URL')) return;
+	if (!URL.canParse(environment.OSV_BASE_URL) || !/^https?:$/.test(new URL(environment.OSV_BASE_URL).protocol)) report.errors.push('OSV_BASE_URL must be an http(s) URL such as https://api.osv.dev.');
+}
+
 function checkCors(environment, report) {
 	for (const origin of parseOrigins(environment.CORS_ORIGINS).filter(value => !isValidOrigin(value))) report.errors.push(`CORS_ORIGINS: "${origin}" is not an origin like https://dashboard.example.com (no path, no trailing slash).`);
 }
@@ -45,7 +50,7 @@ function checkNodeEnvironment(environment, report) {
 	if (isSet(environment, 'NODE_ENV') && !NODE_ENVS.has(environment.NODE_ENV)) report.warnings.push(`NODE_ENV="${environment.NODE_ENV}" is not production, development or test: the server runs as development.`);
 }
 
-const RULES = [checkRequired, checkMail, checkNvd, checkCors, checkTrustProxy, checkRetention, checkNodeEnvironment];
+const RULES = [checkRequired, checkMail, checkNvd, checkOsv, checkCors, checkTrustProxy, checkRetention, checkNodeEnvironment];
 
 export function validateConfig(environment = process.env) {
 	const report = { errors: [], warnings: [] };

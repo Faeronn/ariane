@@ -1,0 +1,27 @@
+{
+  "id": "GHSA-rv95-896h-c2vc",
+  "summary": "Express.js Open Redirect in malformed URLs",
+  "details": "### Impact\n\nVersions of Express.js prior to 4.19.2 and pre-release alpha and beta versions before 5.0.0-beta.3 are affected by an open redirect vulnerability using malformed URLs.\n\nWhen a user of Express performs a redirect using a user-provided URL Express performs an encode [using `encodeurl`](htt",
+  "aliases": [
+    "CVE-2024-29041"
+  ],
+  "modified": "2026-09-10T03:50:10.750068508Z",
+  "published": "2024-03-25T19:40:26Z",
+  "severity": [
+    {
+      "type": "CVSS_V3",
+      "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+    }
+  ],
+  "database_specific": {
+    "cwe_ids": [
+      "CWE-1286",
+      "CWE-601"
+    ],
+    "severity": "MODERATE",
+    "github_reviewed": true,
+    "github_reviewed_at": "2024-03-25T19:40:26Z",
+    "nvd_published_at": "2024-03-25T21:15:46Z"
+  },
+  "schema_version": "1.9.0"
+}

@@ -1,0 +1,11 @@
+{
+  "id": "PYSEC-2023-74",
+  "details": "Requests is a HTTP library. Since Requests 2.3.0, Requests has been leaking Proxy-Authorization headers to destination servers when redirected to an HTTPS endpoint. This is a product of how we use `rebuild_proxies` to reattach the `Proxy-Authorization` header to requests. For HTTP connections sent t",
+  "aliases": [
+    "CVE-2023-32681",
+    "GHSA-j8r2-6x86-q33q"
+  ],
+  "modified": "2023-11-08T04:12:35.436175Z",
+  "published": "2023-05-26T18:15:00Z",
+  "schema_version": "1.7.3"
+}
