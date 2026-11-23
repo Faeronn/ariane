@@ -1,4 +1,5 @@
 import { webhookUrlProblem } from './webhook-url.js';
+import { vulnerabilityLink } from './vulnerability-link.js';
 
 const TIMEOUT_MS = 10_000;
 // Platform limits: Slack section text 3000 chars and 50 blocks; Discord content 2000 chars,
@@ -13,11 +14,14 @@ const DISCORD_DESCRIPTION = 4096;
 const truncate = (text, max) => (text.length <= max ? text : `${text.slice(0, max - 1)}…`);
 const summaryOf = digest => `${digest.total} nouvelle(s) vulnérabilité(s) - ${digest.organization}`;
 
+// A program as `name version`, a dependency with its application: `express 4.17.1 (gesdoc2)`.
+const affectedSoftware = ({ name, version, application }) => (application ? `${name} ${version} (${application})` : `${name} ${version}`);
+
 function line({ cveID, severity, cvssScore, software, versionNormalized, platformDependent }) {
 	const score = cvssScore === undefined ? 'score en attente' : `${severity} ${cvssScore}`;
-	const affected = software.map(({ name, version }) => `${name} ${version}`).join(', ');
+	const affected = software.map(item => affectedSoftware(item)).join(', ');
 	const toVerify = versionNormalized || platformDependent ? ' (à vérifier)' : '';
-	return `• ${cveID} (${score}) : ${affected}${toVerify} https://nvd.nist.gov/vuln/detail/${cveID}`;
+	return `• ${cveID} (${score}) : ${affected}${toVerify} ${vulnerabilityLink(cveID)}`;
 }
 
 const machineText = ({ hostname, vulnerabilities }) => vulnerabilities.map(vulnerability => line(vulnerability)).join('\n').replace(/^/, `${hostname}\n`);

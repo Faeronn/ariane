@@ -31,13 +31,25 @@ async function detectMachine({ machineID, alertsBaselineAt }) {
 	});
 }
 
-// Software of the machine's latest snapshot still waiting for its CPE or for that CPE's CVEs.
+const UNSYNCED_KEY = "(sc.status = 'pending' OR (sc.status = 'matched' AND sc.cvesCheckedAt IS NULL))";
+const LATEST_DEPENDENCIES = `FROM applications a
+	INNER JOIN application_snapshot s ON s.applicationID = a.applicationID
+		AND s.snapshotID = (SELECT MAX(latest.snapshotID) FROM application_snapshot latest WHERE latest.applicationID = a.applicationID)
+	INNER JOIN application_dependency d ON d.snapshotID = s.snapshotID`;
+
+// Software of the machine's latest snapshot still waiting for its CPE or for that CPE's CVEs, and
+// dependencies of its applications still waiting for OSV or (direct ones) for the NVD.
 async function countUnresolved(machineID) {
-	const [{ unresolved }] = await database.query(`SELECT COUNT(*) AS unresolved
-		FROM installed_software s
-		INNER JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
-		WHERE s.snapshotID = (SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?)
-			AND (sc.status = 'pending' OR (sc.status = 'matched' AND sc.cvesCheckedAt IS NULL))`, [machineID]);
+	const [{ unresolved }] = await database.query(`SELECT
+		(SELECT COUNT(*) FROM installed_software s
+			INNER JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
+			WHERE s.snapshotID = (SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?) AND ${UNSYNCED_KEY})
+		+ (SELECT COUNT(*) ${LATEST_DEPENDENCIES}
+			INNER JOIN package_vuln_key k ON k.ecosystem = d.ecosystem AND k.name = d.name AND k.version = d.version
+			WHERE a.machineID = ? AND k.status = 'pending')
+		+ (SELECT COUNT(*) ${LATEST_DEPENDENCIES}
+			INNER JOIN software_cpe sc ON d.direct = 1 AND sc.ecosystem = d.ecosystem AND sc.packageName = d.name AND sc.version = d.version
+			WHERE a.machineID = ? AND ${UNSYNCED_KEY}) AS unresolved`, [machineID, machineID, machineID]);
 	return Number(unresolved);
 }
 

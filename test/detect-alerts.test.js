@@ -109,3 +109,28 @@ describe('detect-alerts baseline readiness', () => {
 		assert.deepEqual(await state(), ['1:CVE-2000-0001:open:unsent', '1:CVE-2000-0002:open:unsent']);
 	});
 });
+
+// Application "shop" on machine 1, latest snapshot with express 4.17.1; its OSV key in `status`.
+async function addApplication(status) {
+	await database.query("INSERT INTO applications (applicationID, orgID, machineID, name, createdAt, lastSeenAt) VALUES (1, ?, 1, 'shop', UTC_TIMESTAMP(), UTC_TIMESTAMP())", [TEST_ORG_ID]);
+	await database.query('INSERT INTO application_snapshot (snapshotID, applicationID, receivedAt) VALUES (1, 1, UTC_TIMESTAMP())');
+	await database.query("INSERT INTO application_dependency (snapshotID, ecosystem, name, version, direct) VALUES (1, 'npm', 'express', '4.17.1', 0)");
+	await database.query("INSERT INTO package_vuln_key (ecosystem, name, version, status) VALUES ('npm', 'express', '4.17.1', ?)", [status]);
+}
+
+describe('detect-alerts with application dependencies', () => {
+	it('defers the baseline while a dependency waits for OSV', async () => {
+		await addApplication('pending');
+		const summary = await runOnce();
+		assert.equal(summary.deferred, 1);
+	});
+
+	it('opens a dependency vulnerability appearing after the baseline, unsent', async () => {
+		await addApplication('checked');
+		await runOnce();
+		await database.query("INSERT INTO cve (cveID, cvssScore, severity) VALUES ('CVE-2024-29041', 6.1, 'MEDIUM')");
+		await database.query("INSERT INTO package_vuln (ecosystem, name, version, cveID) VALUES ('npm', 'express', '4.17.1', 'CVE-2024-29041')");
+		await runOnce();
+		assert.deepEqual(await state(), ['1:CVE-2000-0001:open:sent', '1:CVE-2000-0002:open:sent', '1:CVE-2024-29041:open:unsent']);
+	});
+});

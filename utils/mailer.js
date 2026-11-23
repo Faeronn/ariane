@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import logger from './logger.js';
+import { vulnerabilityLink } from './vulnerability-link.js';
 
 // SMTP options: implicit TLS when MAIL_SECURE=true (port 465), otherwise STARTTLS is required, so
 // credentials and codes never travel in clear text. OAuth is not supported.
@@ -57,10 +58,13 @@ async function sendVerificationEmail(to, verificationCode) {
 
 const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
+// A program as `name version`, a dependency with its application: `express 4.17.1 (gesdoc2)`.
+const affectedSoftware = ({ name, version, application }) => (application ? `${name} ${version} (${application})` : `${name} ${version}`);
+
 function vulnerabilityLine({ cveID, severity, cvssScore, software, versionNormalized, platformDependent }) {
-	const link = `https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cveID)}`;
+	const link = vulnerabilityLink(cveID);
 	const score = cvssScore === undefined ? 'score en attente' : `${severity} ${cvssScore}`;
-	const affected = software.map(({ name, version }) => `${name} ${version}`).join(', ');
+	const affected = software.map(item => affectedSoftware(item)).join(', ');
 	const toVerify = versionNormalized || platformDependent ? ' <em>(à vérifier : correctif de distribution ou plateforme possible)</em>' : '';
 	return `<li><a href="${escapeHtml(link)}">${escapeHtml(cveID)}</a> (${escapeHtml(score)}) : ${escapeHtml(affected)}${toVerify}</li>`;
 }

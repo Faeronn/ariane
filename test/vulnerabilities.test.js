@@ -40,3 +40,44 @@ describe('machineVulnerabilities', () => {
 		assert.deepEqual(body, { message: 'Vulnerabilities retrieved.', vulnerabilities: await machineVulnerabilities(machineID), unmappedSoftware: 1 });
 	});
 });
+
+const entry = (vulnerabilities, cveID) => vulnerabilities.find(vulnerability => vulnerability.cveID === cveID);
+
+describe('machineVulnerabilities with application dependencies', () => {
+	const EXPRESS_CPE = 'cpe:2.3:a:openjsf:express:4.17.1:*:*:*:*:node.js:*:*';
+
+	// App "shop" on the machine: express 4.17.1 (direct) and qs 6.7.0 (transitive), snapshot 2 is
+	// the latest; snapshot 1 held lodash, which must not count any more.
+	beforeEach(async () => {
+		await database.query("INSERT INTO applications (applicationID, orgID, machineID, name, createdAt, lastSeenAt) VALUES (1, 1, ?, 'shop', UTC_TIMESTAMP(), UTC_TIMESTAMP())", [machineID]);
+		await database.query('INSERT INTO application_snapshot (snapshotID, applicationID, receivedAt) VALUES (1, 1, UTC_TIMESTAMP()), (2, 1, UTC_TIMESTAMP())');
+		await database.query("INSERT INTO application_dependency (snapshotID, ecosystem, name, version, direct, dev) VALUES (1, 'npm', 'lodash', '4.17.20', 1, 0), (2, 'npm', 'express', '4.17.1', 1, 0), (2, 'npm', 'qs', '6.7.0', 0, 0)");
+		await database.query("INSERT INTO software_cpe (vendor, name, version, cpeName, status, ecosystem, packageName) VALUES ('', 'express', '4.17.1', ?, 'matched', 'npm', 'express')", [EXPRESS_CPE]);
+		for (const [cveID, score] of [['CVE-2024-29041', 6.1], ['GHSA-only-osv', 7.5], ['CVE-2024-0001', 4], ['CVE-2021-0001', 9]]) {
+			await database.query('INSERT INTO cve (cveID, cvssScore, severity) VALUES (?, ?, ?)', [cveID, score, 'HIGH']);
+		}
+		await database.query('INSERT INTO cpe_cve (cpeName, cveID) VALUES (?, ?), (?, ?)', [EXPRESS_CPE, 'CVE-2024-29041', EXPRESS_CPE, 'CVE-2024-0001']);
+		await database.query("INSERT INTO package_vuln (ecosystem, name, version, cveID) VALUES ('npm', 'express', '4.17.1', 'CVE-2024-29041'), ('npm', 'qs', '6.7.0', 'GHSA-only-osv'), ('npm', 'lodash', '4.17.20', 'CVE-2021-0001')");
+	});
+
+	it('lists a vulnerability reached by both sources once, with both', async () => {
+		const vulnerabilities = await machineVulnerabilities(machineID);
+		const express = entry(vulnerabilities, 'CVE-2024-29041');
+		assert.deepEqual(express.sources, ['nvd', 'osv']);
+		assert.deepEqual(express.software, [{ name: 'express', version: '4.17.1', ecosystem: 'npm', application: 'shop' }]);
+		assert.equal(express.versionNormalized, false);
+	});
+
+	it('says which single source found the others, programs included', async () => {
+		const vulnerabilities = await machineVulnerabilities(machineID);
+		assert.deepEqual(entry(vulnerabilities, 'GHSA-only-osv').sources, ['osv']);
+		assert.deepEqual(entry(vulnerabilities, 'CVE-2024-0001').sources, ['nvd']);
+		assert.deepEqual(entry(vulnerabilities, 'CVE-2000-0002').sources, ['nvd']);
+	});
+
+	it('reads only the latest snapshot of each application', async () => {
+		const vulnerabilities = await machineVulnerabilities(machineID);
+		assert.equal(entry(vulnerabilities, 'CVE-2021-0001'), undefined);
+		assert.deepEqual(vulnerabilities.map(({ cveID }) => cveID), ['CVE-2000-0002', 'GHSA-only-osv', 'CVE-2024-29041', 'CVE-2000-0001', 'CVE-2024-0001']);
+	});
+});
