@@ -66,7 +66,7 @@ describe('purge', () => {
 
 	it('deletes vulnerabilities neither a CPE nor a package links to', async () => {
 		assert.deepEqual(ids(await database.query('SELECT cveID FROM cve ORDER BY 1')), ['CVE-2', 'CVE-3', 'GHSA-cur']);
-		assert.deepEqual(summary, { snapshots: 2, applicationSnapshots: 1, softwareKeys: 2, cpeLinks: 1, packageKeys: 1, packageLinks: 1, cves: 3 });
+		assert.deepEqual(summary, { snapshots: 2, applicationSnapshots: 1, softwareKeys: 2, cpeLinks: 1, packageKeys: 1, packageLinks: 1, cves: 3, itemStates: 0 });
 	});
 
 	it('never runs while another instance holds the purge lock', async () => {

@@ -26,7 +26,7 @@ beforeEach(async () => {
 	for (const [cveID, score, severity] of [['CVE-2000-0001', 9.8, 'CRITICAL'], ['CVE-2000-0002', 5, 'MEDIUM']]) {
 		await database.query('INSERT INTO cve (cveID, cvssScore, severity) VALUES (?, ?, ?)', [cveID, score, severity]);
 		await database.query('INSERT INTO cpe_cve (cpeName, cveID) VALUES (?, ?)', [CPE, cveID]);
-		await database.query('INSERT INTO machine_cve_state (machineID, cveID, firstSeenAt) VALUES (1, ?, UTC_TIMESTAMP())', [cveID]);
+		await database.query('INSERT INTO item_cve_state (itemType, itemID, cveID, firstSeenAt) VALUES ("machine", 1, ?, UTC_TIMESTAMP())', [cveID]);
 	}
 	sent = [];
 	sendMail = mock.method(getTransporter(), 'sendMail', async mail => {
@@ -37,7 +37,7 @@ beforeEach(async () => {
 afterEach(() => sendMail.mock.restore());
 after(() => database.end());
 
-const emailState = () => database.query('SELECT cveID, emailSentAt IS NOT NULL AS sent FROM machine_cve_state ORDER BY cveID')
+const emailState = () => database.query('SELECT cveID, emailSentAt IS NOT NULL AS sent FROM item_cve_state ORDER BY cveID')
 	.then(rows => rows.map(({ cveID, sent: done }) => `${cveID}:${done ? 'sent' : 'unsent'}`));
 
 describe('email alert digest', () => {
@@ -91,7 +91,7 @@ describe('email alert digest', () => {
 	});
 });
 
-const webhookState = () => database.query('SELECT cveID, webhookSentAt IS NOT NULL AS posted, emailSentAt IS NOT NULL AS emailed FROM machine_cve_state ORDER BY cveID')
+const webhookState = () => database.query('SELECT cveID, webhookSentAt IS NOT NULL AS posted, emailSentAt IS NOT NULL AS emailed FROM item_cve_state ORDER BY cveID')
 	.then(rows => rows.map(({ cveID, posted, emailed }) => `${cveID}:${posted ? 'posted' : 'unposted'}:${emailed ? 'emailed' : 'unemailed'}`));
 
 describe('webhook alert delivery', () => {

@@ -1,6 +1,6 @@
 import database from '../utils/database.js';
 import { withJobLock } from '../utils/job-lock.js';
-import { machineVulnerabilities } from '../utils/vulnerabilities.js';
+import { programVulnerabilities, applicationVulnerabilities } from '../utils/vulnerabilities.js';
 import { sendAlertDigest } from '../utils/mailer.js';
 import { formatDigest, postWebhook } from '../utils/webhook.js';
 import baseLogger from '../utils/logger.js';
@@ -12,33 +12,41 @@ const logger = baseLogger.child({ job: 'send-alerts' });
 // A CVE NVD has not scored yet is always reported: unknown is not low.
 const meetsThreshold = (severity, minSeverity) => !SEVERITY_RANK[severity] || SEVERITY_RANK[severity] >= SEVERITY_RANK[minSeverity];
 
-// Open CVE states of the organization's active machines not yet delivered on `column`'s channel.
+// Open CVE states of the organization's items (machines and applications of active machines) not
+// yet delivered on `column`'s channel, with a label for each item.
 function unsentRows(orgID, column) {
-	return database.query(`SELECT st.machineID, m.hostname, st.cveID, c.severity FROM machine_cve_state st
-		INNER JOIN machines m ON m.machineID = st.machineID
+	return database.query(`SELECT st.itemType, st.itemID, st.cveID, c.severity,
+			IF(st.itemType = 'machine', m.hostname, CONCAT(a.name, ' (', host.hostname, ')')) AS label
+		FROM item_cve_state st
+		LEFT JOIN machines m ON st.itemType = 'machine' AND m.machineID = st.itemID
+		LEFT JOIN applications a ON st.itemType = 'application' AND a.applicationID = st.itemID
+		LEFT JOIN machines host ON host.machineID = a.machineID
 		LEFT JOIN cve c ON c.cveID = st.cveID
-		WHERE m.orgID = ? AND m.revokedAt IS NULL AND st.resolvedAt IS NULL AND st.${column} IS NULL`, [orgID]);
+		WHERE COALESCE(m.orgID, host.orgID) = ? AND COALESCE(m.machineID, host.machineID) IS NOT NULL
+			AND COALESCE(m.revokedAt, host.revokedAt) IS NULL AND st.resolvedAt IS NULL AND st.${column} IS NULL`, [orgID]);
 }
 
 async function markSent(rows, column) {
-	if (rows.length > 0) await database.batch(`UPDATE machine_cve_state SET ${column} = UTC_TIMESTAMP() WHERE machineID = ? AND cveID = ?`, rows.map(({ machineID, cveID }) => [machineID, cveID]));
+	if (rows.length > 0) await database.batch(`UPDATE item_cve_state SET ${column} = UTC_TIMESTAMP() WHERE itemType = ? AND itemID = ? AND cveID = ?`, rows.map(({ itemType, itemID, cveID }) => [itemType, itemID, cveID]));
 }
+
+const itemVulnerabilities = (itemType, itemID) => (itemType === 'machine' ? programVulnerabilities(itemID) : applicationVulnerabilities(itemID));
 
 // { organization, total, shown, machines: [{ hostname, vulnerabilities }] } from the rows, with the
 // current details (score, software, flags) of each CVE; at most MAX_DIGEST_ENTRIES shown.
 async function buildDigest(organization, rows) {
-	const byMachine = Map.groupBy(rows, ({ machineID }) => machineID);
+	const byItem = Map.groupBy(rows, ({ itemType, itemID }) => `${itemType}:${itemID}`);
 	const machines = [];
 	let total = 0;
 	let shown = 0;
-	for (const [machineID, machineRows] of byMachine) {
+	for (const machineRows of byItem.values()) {
 		const wanted = new Set(machineRows.map(({ cveID }) => cveID));
-		const all = await machineVulnerabilities(machineID);
+		const all = await itemVulnerabilities(machineRows[0].itemType, machineRows[0].itemID);
 		const vulnerabilities = all.filter(({ cveID }) => wanted.has(cveID));
 		total += vulnerabilities.length;
 		const kept = vulnerabilities.slice(0, Math.max(0, MAX_DIGEST_ENTRIES - shown));
 		shown += kept.length;
-		if (kept.length > 0) machines.push({ hostname: machineRows[0].hostname, vulnerabilities: kept });
+		if (kept.length > 0) machines.push({ hostname: machineRows[0].label, vulnerabilities: kept });
 	}
 	machines.sort((left, right) => left.hostname.localeCompare(right.hostname));
 	return { organization: organization.name, total, shown, machines };

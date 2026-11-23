@@ -43,6 +43,11 @@ const ORPHAN_PACKAGE_LINKS = `DELETE pv FROM package_vuln pv
 	LEFT JOIN package_vuln_key k ON k.ecosystem = pv.ecosystem AND k.name = pv.name AND k.version = pv.version
 	WHERE k.status IS NULL`;
 // A vulnerability stays while a CPE or a package still links to it.
+// Alert states of items gone (deleted machine, or application deleted with its machine).
+const ORPHAN_ITEM_STATES = `DELETE st FROM item_cve_state st
+	LEFT JOIN machines m ON st.itemType = 'machine' AND m.machineID = st.itemID
+	LEFT JOIN applications a ON st.itemType = 'application' AND a.applicationID = st.itemID
+	WHERE m.machineID IS NULL AND a.applicationID IS NULL`;
 const ORPHAN_CVES = `DELETE c FROM cve c
 	LEFT JOIN cpe_cve cc ON cc.cveID = c.cveID
 	LEFT JOIN package_vuln pv ON pv.cveID = c.cveID
@@ -70,7 +75,8 @@ async function tick({ retentionDays = Number(process.env.SNAPSHOT_RETENTION_DAYS
 	const packageKeys = await deleted(ORPHAN_PACKAGE_KEYS);
 	const packageLinks = await deleted(ORPHAN_PACKAGE_LINKS);
 	const cves = await deleted(ORPHAN_CVES);
-	const summary = { snapshots, applicationSnapshots, softwareKeys, cpeLinks, packageKeys, packageLinks, cves };
+	const itemStates = await deleted(ORPHAN_ITEM_STATES);
+	const summary = { snapshots, applicationSnapshots, softwareKeys, cpeLinks, packageKeys, packageLinks, cves, itemStates };
 	logger.info(summary, 'Purge done');
 	return summary;
 }

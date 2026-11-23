@@ -6,7 +6,7 @@ import path from 'node:path';
 import { migrate, MIGRATIONS_DIRECTORY } from '../utils/migrate.js';
 import { connect, dropAllTables, rebuildSchema } from './helpers/database.js';
 
-const SCHEMA_TABLES = ['cpe_cve', 'cve', 'domain', 'installed_software', 'inventory_snapshot', 'machines', 'refresh_token', 'software_cpe', 'users', 'verifications', 'applications', 'application_snapshot', 'application_dependency', 'package_vuln_key', 'package_vuln'];
+const SCHEMA_TABLES = ['cpe_cve', 'cve', 'domain', 'installed_software', 'inventory_snapshot', 'machines', 'refresh_token', 'software_cpe', 'users', 'verifications', 'applications', 'application_snapshot', 'application_dependency', 'package_vuln_key', 'package_vuln', 'item_cve_state'];
 const connectMulti = () => connect({ multipleStatements: true });
 const run = directory => migrate({ directory, connect: connectMulti });
 
@@ -47,7 +47,7 @@ describe('migrate', () => {
 	it('widens every vulnerability id column for OSV ids', async () => {
 		await run(MIGRATIONS_DIRECTORY);
 		const columns = await inspect("SELECT TABLE_NAME AS name, CHARACTER_MAXIMUM_LENGTH AS length FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'cveID' ORDER BY TABLE_NAME");
-		assert.deepEqual(columns.map(({ name, length }) => `${name}:${Number(length)}`), ['cpe_cve:50', 'cve:50', 'machine_cve_state:50', 'osv_alias:50', 'package_vuln:50']);
+		assert.deepEqual(columns.map(({ name, length }) => `${name}:${Number(length)}`), ['cpe_cve:50', 'cve:50', 'item_cve_state:50', 'osv_alias:50', 'package_vuln:50']);
 	});
 
 	it('applies nothing on a second run', async () => {
