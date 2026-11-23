@@ -73,6 +73,32 @@ describe('resolve-cpe runOnce', () => {
 		assert.equal(Number(row.versionNormalized), 1);
 	});
 
+	it('keeps an upstream hyphen version the dictionary knows (real ImageMagick 7.1.2-30)', async () => {
+		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['imagemagick studio llc', 'imagemagick', '7.1.2-30']);
+		stub.route('/cpes/2.0', 'imagemagick 7.1.2-30', loadFixture('cpes-imagemagick-7.1.2-30.json'));
+		stub.route('/cpes/2.0', 'imagemagick 7.1.2', loadFixture('cpes-imagemagick-7.1.2.json'));
+		await runOnce({ client });
+		const [row] = await database.query('SELECT cpeName, status, versionNormalized FROM software_cpe WHERE name = ?', ['imagemagick']);
+		assert.deepEqual({ ...row, versionNormalized: Number(row.versionNormalized) }, { cpeName: 'cpe:2.3:a:imagemagick:imagemagick:7.1.2-30:*:*:*:*:*:*:*', status: 'matched', versionNormalized: 0 });
+		assert.ok(!stub.requests.some(({ query }) => query.keywordSearch === 'imagemagick 7.1.2'));
+	});
+
+	it('tries the packaged version before its upstream one', async () => {
+		await database.query('UPDATE software_cpe SET version = ? WHERE name = ?', ['3.0.0-1~deb12u2', 'openssl']);
+		stub.route('/cpes/2.0', 'openssl 3.0.0', loadFixture('cpes-openssl-3.0.0.json'));
+		await runOnce({ client });
+		const searches = stub.requests.map(({ query }) => query.keywordSearch).filter(keyword => keyword?.startsWith('openssl'));
+		assert.deepEqual(searches, ['openssl 3.0.0-1~deb12u2', 'openssl 3.0.0']);
+	});
+
+	it('never builds a synthetic CPE on a version still carrying a packaging revision', async () => {
+		await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', ['google llc', 'google chrome', '122.0.6261.112-1']);
+		stub.route('/cpes/2.0', 'cpe:2.3:a:google:chrome', { products: [{ cpe: { cpeName: 'cpe:2.3:a:google:chrome:0.2.149.29:*:*:*:*:*:*:*' } }] });
+		await runOnce({ client });
+		const [row] = await database.query('SELECT cpeName, versionNormalized FROM software_cpe WHERE name = ?', ['google chrome']);
+		assert.deepEqual({ ...row, versionNormalized: Number(row.versionNormalized) }, { cpeName: 'cpe:2.3:a:google:chrome:122.0.6261.112:*:*:*:*:*:*:*', versionNormalized: 1 });
+	});
+
 	it('does not flag an exact version match', async () => {
 		stub.route('/cpes/2.0', 'openssl 3.0.0', loadFixture('cpes-openssl-3.0.0.json'));
 		await runOnce({ client });

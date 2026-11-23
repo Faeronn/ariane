@@ -1,0 +1,114 @@
+{
+  "resultsPerPage": 8,
+  "startIndex": 0,
+  "totalResults": 8,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-23T11:45:38.703",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2:*:*:*:*:*:*:*",
+        "cpeNameId": "E365F55C-B50E-4BED-A44B-FEF016856BED",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2",
+            "lang": "en"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-1:*:*:*:*:*:*:*",
+        "cpeNameId": "4A92D6E0-8BEE-4B2B-8F4B-D2318763D253",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2-1",
+            "lang": "en"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-0:*:*:*:*:*:*:*",
+        "cpeNameId": "BB56C6F4-697C-498D-B4E6-BBDDEE00C33B",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2-0",
+            "lang": "en"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-2:*:*:*:*:*:*:*",
+        "cpeNameId": "1718908A-3C1B-46B8-A083-266743067CE4",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2-2",
+            "lang": "en"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-3:*:*:*:*:*:*:*",
+        "cpeNameId": "927EA155-928A-44B9-BEA1-446908F504C6",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2-3",
+            "lang": "en"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-7:*:*:*:*:*:*:*",
+        "cpeNameId": "FF2F29D3-3180-42D1-9E8A-F2DB7482AD6D",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2-7",
+            "lang": "en"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-8:*:*:*:*:*:*:*",
+        "cpeNameId": "049457CB-6970-4FA6-B60B-77F49B991A6C",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2-8",
+            "lang": "en"
+          }
+        ]
+      }
+    },
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-6:*:*:*:*:*:*:*",
+        "cpeNameId": "3DFECC9E-BD46-414B-ADC6-8FF876050978",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2-6",
+            "lang": "en"
+          }
+        ]
+      }
+    }
+  ]
+}

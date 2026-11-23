@@ -1,0 +1,23 @@
+{
+  "resultsPerPage": 1,
+  "startIndex": 0,
+  "totalResults": 1,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-23T11:45:36.930",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:imagemagick:imagemagick:7.1.2-30:*:*:*:*:*:*:*",
+        "cpeNameId": "062B5618-7E22-428E-B76F-D7AE78B98761",
+        "titles": [
+          {
+            "title": "ImageMagick 7.1.2-30",
+            "lang": "en"
+          }
+        ]
+      }
+    }
+  ]
+}
