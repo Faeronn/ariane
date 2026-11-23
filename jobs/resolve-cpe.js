@@ -44,7 +44,10 @@ export function pickCpe(software, products) {
 		return fields.part === 'a' && fields.product === product && fields.version === software.version && RELEASE_UPDATES.has(fields.update);
 	});
 	const sameVendor = vendor ? candidates.filter(cpe => parseCpe(cpe.cpeName).vendor === vendor) : candidates;
-	const resolved = new Set((sameVendor.length > 0 ? sameVendor : candidates).map(cpe => {
+	// A package scope or Composer vendor names the publisher: `@types/ws` is not `ws_project:ws`.
+	// An installed program's vendor is free text, so it only breaks ties.
+	const strictVendor = Boolean(software.ecosystem && vendor);
+	const resolved = new Set((sameVendor.length > 0 || strictVendor ? sameVendor : candidates).map(cpe => {
 		if (!cpe.deprecated) return cpe.cpeName;
 		return cpe.deprecatedBy?.length === 1 ? cpe.deprecatedBy[0].cpeName : undefined;
 	}).filter(Boolean));

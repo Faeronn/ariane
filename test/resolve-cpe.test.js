@@ -277,6 +277,13 @@ describe('pickCpe for an ecosystem package', () => {
 		assert.equal(pickCpe(debug, productsOf(['cpe:2.3:a:acme:debug:2.6.9:*:*:*:*:python:*:*'])), undefined);
 	});
 
+	it('refuses another publisher for a scoped package (real @types/ws => ws_project:ws)', () => {
+		const types = { ecosystem: 'npm', vendor: 'types', name: 'ws', version: '8.18.1' };
+		assert.equal(pickCpe(types, productsOf(['cpe:2.3:a:ws_project:ws:8.18.1:*:*:*:*:node.js:*:*'])), undefined);
+		const symfony = { ecosystem: 'Packagist', vendor: 'symfony', name: 'http-kernel', version: '7.4.21' };
+		assert.equal(pickCpe(symfony, productsOf(['cpe:2.3:a:symfony:http-kernel:7.4.21:*:*:*:*:*:*:*'])), 'cpe:2.3:a:symfony:http-kernel:7.4.21:*:*:*:*:*:*:*');
+	});
+
 	it('keeps accepting any target for installed programs', () => {
 		assert.equal(pickCpe({ vendor: '', name: 'debug', version: '2.6.9' }, productsOf(['cpe:2.3:a:acme:debug:2.6.9:*:*:*:*:python:*:*'])), 'cpe:2.3:a:acme:debug:2.6.9:*:*:*:*:python:*:*');
 	});
