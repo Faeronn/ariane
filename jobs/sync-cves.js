@@ -58,7 +58,7 @@ function storeLinks(cpeName, cves) {
 	return database.transaction(async connection => {
 		if (cves.length > 0) {
 			await connection.batch(`INSERT INTO cve (cveID, description, cvssScore, severity, published, lastModified) VALUES (?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))
-				ON DUPLICATE KEY UPDATE description = VALUES(description), cvssScore = VALUES(cvssScore), severity = VALUES(severity), published = VALUES(published), lastModified = VALUES(lastModified)`,
+				ON DUPLICATE KEY UPDATE description = VALUES(description), cvssScore = VALUES(cvssScore), severity = VALUES(severity), published = VALUES(published), lastModified = VALUES(lastModified), source = 'nvd'`,
 			cves.map(cve => {
 				const { cvssScore, severity } = pickScore(cve.metrics);
 				const description = cve.descriptions?.find(entry => entry.lang === 'en')?.value ?? '';

@@ -14,6 +14,7 @@ import authRouter from './routes/auth.js';
 import { startResolveCpeJob } from './jobs/resolve-cpe.js';
 import { startSyncCvesJob } from './jobs/sync-cves.js';
 import { startSyncOsvJob } from './jobs/sync-osv.js';
+import { startSyncPackagistJob } from './jobs/sync-packagist.js';
 import { startPurgeJob } from './jobs/purge.js';
 import { startDetectAlertsJob } from './jobs/detect-alerts.js';
 import { startSendAlertsJob } from './jobs/send-alerts.js';
@@ -88,6 +89,8 @@ async function start() {
 		}
 		// Dependency vulnerabilities from OSV. OSV_ENABLED=false turns it off (tests, offline dev).
 		if (process.env.OSV_ENABLED !== 'false') startSyncOsvJob();
+		// Composer packages: Packagist security advisories. PACKAGIST_ENABLED=false turns it off.
+		if (process.env.PACKAGIST_ENABLED !== 'false') startSyncPackagistJob();
 	});
 }
 

@@ -46,8 +46,8 @@ async function storeRecords(connection, records) {
 	for (const record of records) {
 		const id = storedID(record);
 		const { cvssScore, severity } = scoreOf(record);
-		await connection.query(`INSERT IGNORE INTO cve (cveID, description, cvssScore, severity, published, lastModified)
-			VALUES (?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''))`,
+		await connection.query(`INSERT IGNORE INTO cve (cveID, description, cvssScore, severity, published, lastModified, source)
+			VALUES (?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), 'osv')`,
 		[id, record.summary || record.details?.slice(0, 2000) || '', cvssScore === undefined ? '' : String(cvssScore), severity ?? '', toSqlDateTime(record.published), toSqlDateTime(record.modified)]);
 		const osvIDs = [record.id, ...(record.aliases ?? []).filter(alias => !alias.startsWith('CVE-'))];
 		await connection.batch('INSERT IGNORE INTO osv_alias (osvID, cveID) VALUES (?, ?)', osvIDs.map(osvID => [osvID, id]));
@@ -84,8 +84,8 @@ async function tick({ client = getOsvClient(), batchSize = BATCH_SIZE } = {}) {
 			await storeRecords(connection, records);
 			for (const [index, key] of keys.entries()) {
 				const linked = [...new Set(idsPerKey[index].map(id => known.get(id)).filter(Boolean))];
-				await connection.query('DELETE FROM package_vuln WHERE ecosystem = ? AND name = ? AND version = ?', [key.ecosystem, key.name, key.version]);
-				if (linked.length > 0) await connection.batch('INSERT INTO package_vuln (ecosystem, name, version, cveID) VALUES (?, ?, ?, ?)', linked.map(cveID => [key.ecosystem, key.name, key.version, cveID]));
+				await connection.query("DELETE FROM package_vuln WHERE ecosystem = ? AND name = ? AND version = ? AND source = 'osv'", [key.ecosystem, key.name, key.version]);
+				if (linked.length > 0) await connection.batch("INSERT INTO package_vuln (ecosystem, name, version, cveID, source) VALUES (?, ?, ?, ?, 'osv')", linked.map(cveID => [key.ecosystem, key.name, key.version, cveID]));
 				await connection.query("UPDATE package_vuln_key SET status = 'checked', checkedAt = UTC_TIMESTAMP() WHERE ecosystem = ? AND name = ? AND version = ?", [key.ecosystem, key.name, key.version]);
 				summary.linked += linked.length;
 			}
