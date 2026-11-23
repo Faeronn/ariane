@@ -43,6 +43,14 @@ describe('validateConfig', () => {
 		assert.match(errors[0], /MAIL_TRANSPORT=json/);
 	});
 
+	it('warns about an unknown NODE_ENV and still accepts the configuration', () => {
+		const { errors, warnings } = validateConfig({ ...PRODUCTION, NODE_ENV: 'prod' });
+		assert.deepEqual(errors, []);
+		assert.equal(warnings.length, 1);
+		assert.match(warnings[0], /NODE_ENV="prod" is not production, development or test/);
+		assert.deepEqual(validateConfig({ ...PRODUCTION, NODE_ENV: 'development' }).warnings, []);
+	});
+
 	it('warns about the NVD rate limit when jobs run without a key', () => {
 		const { errors, warnings } = validateConfig(without('NVD_API_KEY'));
 		assert.deepEqual(errors, []);

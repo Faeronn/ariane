@@ -6,7 +6,7 @@ import { startServer } from './helpers/server.js';
 import { reset, TEST_ORG_ID } from './helpers/database.js';
 import bcrypt from 'bcrypt';
 import database from '../utils/database.js';
-import { hashToken } from '../utils/jwt.js';
+import { hashToken, hashVerificationCode } from '../utils/jwt.js';
 
 let server;
 before(async () => { server = await startServer(); });
@@ -19,7 +19,10 @@ describe('POST /auth/signup', () => {
 		assert.equal(response.status, 200);
 		const [user] = await database.query('SELECT userID, isVerified FROM users WHERE username = ?', ['bob@ariane.test']);
 		assert.notEqual(user.isVerified, 1);
-		assert.match(await getVerificationCode(user.userID), /^\d{6}$/);
+		const code = await getVerificationCode(user.userID);
+		assert.match(code, /^\d{6}$/);
+		const [stored] = await database.query('SELECT verificationCode FROM verifications WHERE userID = ?', [user.userID]);
+		assert.equal(stored.verificationCode, hashVerificationCode(code)); // never the code itself
 	});
 
 	it('refuses a domain that is not allowed', async () => {
@@ -171,7 +174,7 @@ describe('GET /auth/verify', () => {
 		const bob = await createUser(server.baseUrl, 'bob');
 		const aliceCode = await getVerificationCode(alice.userID);
 		const bobCode = await getVerificationCode(bob.userID);
-		if (aliceCode === bobCode) await database.query('UPDATE verifications SET verificationCode = ? WHERE userID = ?', [wrongCode(aliceCode), bob.userID]);
+		if (aliceCode === bobCode) await database.query('UPDATE verifications SET verificationCode = ? WHERE userID = ?', [hashVerificationCode(wrongCode(aliceCode)), bob.userID]);
 
 		const response = await verify(alice.username, await getVerificationCode(bob.userID));
 		assert.equal(response.status, 400);

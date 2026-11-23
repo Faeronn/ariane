@@ -50,6 +50,11 @@ Le schéma vient des fichiers de `migrations/`, appliqués dans l’ordre et une
 
 `npm run migrate` utilise l’utilisateur du `.env` : il lui faut les droits de modifier le schéma (`CREATE`, `ALTER`, `INDEX`, `REFERENCES`, `DROP`).
 
+Sauvegarder la base avant une migration, avec l’utilisateur applicatif (sans droit `LOCK TABLES`, d’où `--single-transaction`) :
+```
+mariadb-dump --single-transaction -u ariane -p ariane > ariane-backup.sql
+```
+
 ### 4️⃣ Variables d’environnement
 
 Copier `.env.example` en `.env` et le compléter : chaque variable y est commentée.

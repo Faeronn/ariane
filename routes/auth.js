@@ -1,4 +1,4 @@
-import { generateAccessToken, generateRefreshToken, hashToken } from '../utils/jwt.js';
+import { generateAccessToken, generateRefreshToken, hashToken, hashVerificationCode } from '../utils/jwt.js';
 import { sendVerificationEmail } from '../utils/mailer.js';
 import sanitizeInput from '../utils/sanitizer.js';
 import { signinPerIp, signinPerAccount, signupPerIp, verifyPerIp, refreshPerIp } from '../middleware/rate-limit.js';
@@ -57,7 +57,7 @@ router.post('/signup', signupPerIp, async (request, response) => {
 		if (signupQuery.affectedRows <= 0) return response.status(500).send({ message: 'Error : Unable to create User.' });
 
 		const verificationCode = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
-		const verificationQuery = await database.query('INSERT INTO verifications (userID, verificationCode, expiryDate) VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 HOUR));', [signupQuery.insertId, verificationCode]);
+		const verificationQuery = await database.query('INSERT INTO verifications (userID, verificationCode, expiryDate) VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 HOUR));', [signupQuery.insertId, hashVerificationCode(verificationCode)]);
 		
 		if (verificationQuery.affectedRows <= 0) return response.status(500).send({ message: 'Error : Unable to setup Verification.' });
 		sendVerificationEmail(username, verificationCode);
@@ -97,7 +97,9 @@ router.get('/verify', verifyPerIp, async (request, response) => {
 			return response.status(410).send({ message: 'Error : Verification code expired.' });
 		}
 
-		const isMatch = crypto.timingSafeEqual(Buffer.from(rows[0].verificationCode), Buffer.from(verificationCode));
+		const stored = Buffer.from(String(rows[0].verificationCode));
+		const given = Buffer.from(hashVerificationCode(verificationCode));
+		const isMatch = stored.length === given.length && crypto.timingSafeEqual(stored, given);
 		if (!isMatch) return response.status(400).send({ message: INVALID_CODE_MESSAGE });
 
 		await database.transaction(async connection => {

@@ -38,7 +38,14 @@ function checkRetention(environment, report) {
 	if (isSet(environment, 'SNAPSHOT_RETENTION_DAYS') && !/^[1-9]\d*$/.test(environment.SNAPSHOT_RETENTION_DAYS)) report.errors.push('SNAPSHOT_RETENTION_DAYS must be a whole number of days (1 or more).');
 }
 
-const RULES = [checkRequired, checkMail, checkNvd, checkCors, checkTrustProxy, checkRetention];
+// Only `production` changes behavior (JSON logs, no JSON mail transport): a near miss like `prod`
+// silently runs as development.
+const NODE_ENVS = new Set(['production', 'development', 'test']);
+function checkNodeEnvironment(environment, report) {
+	if (isSet(environment, 'NODE_ENV') && !NODE_ENVS.has(environment.NODE_ENV)) report.warnings.push(`NODE_ENV="${environment.NODE_ENV}" is not production, development or test: the server runs as development.`);
+}
+
+const RULES = [checkRequired, checkMail, checkNvd, checkCors, checkTrustProxy, checkRetention, checkNodeEnvironment];
 
 export function validateConfig(environment = process.env) {
 	const report = { errors: [], warnings: [] };

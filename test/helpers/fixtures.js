@@ -3,6 +3,7 @@ import pino from 'pino';
 import express from 'express';
 import database from '../../utils/database.js';
 import logger from '../../utils/logger.js';
+import { getTransporter } from '../../utils/mailer.js';
 import { ALLOWED_DOMAIN } from './database.js';
 
 export const PASSWORD = process.env.TEST_USER_SECRET ?? 'Sup3r-secret';
@@ -34,9 +35,21 @@ export async function createUser(baseUrl, local = 'alice', domain = ALLOWED_DOMA
 	return { username, userID: Number(response.body.user.userID) };
 }
 
+// Mails handed to the transport, newest last: the database only keeps a keyed hash of each
+// verification code, so tests read the code from the mail sent at signup.
+const outbox = [];
+const transporter = getTransporter();
+const deliver = transporter.sendMail.bind(transporter);
+transporter.sendMail = options => {
+	outbox.push(options);
+	return deliver(options);
+};
+
+// The code of the latest verification mail sent to the user.
 export async function getVerificationCode(userID) {
-	const rows = await database.query('SELECT verificationCode FROM verifications WHERE userID = ?', [userID]);
-	return rows[0]?.verificationCode;
+	const [user] = await database.query('SELECT username FROM users WHERE userID = ?', [userID]);
+	const mail = outbox.findLast(({ to }) => to === user?.username);
+	return mail?.html.match(/letter-spacing:6px[^>]*>(\d{6})</)?.[1];
 }
 
 export async function verifyUser(baseUrl, user) {
