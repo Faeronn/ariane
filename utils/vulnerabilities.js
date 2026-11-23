@@ -68,6 +68,7 @@ function merge(osFamily, findings) {
 	return [...vulnerabilities.values()].map(vulnerability => ({ ...vulnerability, software: vulnerability.software.toSorted(bySoftware) })).toSorted(byScore);
 }
 
+const programFindings = programs => programs.map(row => ({ row, source: 'nvd', software: { name: row.name, version: row.version }, versionNormalized: Boolean(row.versionNormalized) }));
 const dependency = row => ({ name: row.name, version: row.version, ecosystem: row.ecosystem, application: row.application });
 const dependencyFindings = ([nvd, advisories]) => [
 	...nvd.map(row => ({ row, source: 'nvd', software: dependency(row), versionNormalized: false })),
@@ -83,10 +84,17 @@ export async function machineVulnerabilities(machineID) {
 		programRows(machineID),
 		dependencyRows('machineID', machineID)
 	]);
-	return merge(machine?.osFamily, [
-		...programs.map(row => ({ row, source: 'nvd', software: { name: row.name, version: row.version }, versionNormalized: Boolean(row.versionNormalized) })),
-		...dependencyFindings(dependencies)
+	return merge(machine?.osFamily, [...programFindings(programs), ...dependencyFindings(dependencies)]);
+}
+
+// Vulnerabilities of the machine's installed programs only (the machine as an alert item; its
+// applications are items of their own).
+export async function programVulnerabilities(machineID) {
+	const [[machine], programs] = await Promise.all([
+		database.query('SELECT osFamily FROM machines WHERE machineID = ?', [machineID]),
+		programRows(machineID)
 	]);
+	return merge(machine?.osFamily, programFindings(programs));
 }
 
 // Vulnerabilities of one application's latest dependencies, entries flagged `direct` / `dev` when

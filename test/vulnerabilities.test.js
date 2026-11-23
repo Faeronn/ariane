@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { api, createSignedInUser } from './helpers/fixtures.js';
 import { startServer } from './helpers/server.js';
 import { reset } from './helpers/database.js';
-import { machineVulnerabilities, countUnmapped } from '../utils/vulnerabilities.js';
+import { machineVulnerabilities, programVulnerabilities, countUnmapped } from '../utils/vulnerabilities.js';
 import database from '../utils/database.js';
 
 const OPENSSL_CPE = 'cpe:2.3:a:openssl:openssl:3.0.0:-:*:*:*:*:*:*';
@@ -91,6 +91,12 @@ describe('machineVulnerabilities with application dependencies', () => {
 		assert.deepEqual(entry(vulnerabilities, 'CVE-2026-45070').sources, ['osv', 'packagist']);
 		assert.deepEqual(entry(vulnerabilities, 'PKSA-wtxr-p26d-nn42').sources, ['packagist']);
 		assert.equal(entry(vulnerabilities, 'CVE-2026-45070').software.length, 1);
+	});
+
+	it('keeps the programs of the machine apart from its applications for the machine item', async () => {
+		const programs = await programVulnerabilities(machineID);
+		assert.deepEqual(programs.map(({ cveID }) => cveID), ['CVE-2000-0002', 'CVE-2000-0001']);
+		assert.ok(programs.every(({ software }) => software.every(item => !item.application)));
 	});
 
 	it('reads only the latest snapshot of each application', async () => {
