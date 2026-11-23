@@ -1,3 +1,5 @@
+import { versionToShow } from './notification.js';
+
 // Slack and Discord rendering of an item notification. Limits from the platforms' documentation
 // (read 2026-11-23):
 // - Discord (docs.discord.com/developers/resources/message, .../webhook): content 2000; embed title
@@ -47,7 +49,7 @@ function softwareLabel({ name, version, ecosystem, direct, dev }) {
 	if (ecosystem) tags.push(ecosystem);
 	if (ecosystem && direct !== undefined) tags.push(direct ? 'directe' : 'transitive');
 	if (dev) tags.push('développement');
-	return [`${name} ${version}`, ...tags].join(' · ');
+	return [[name, versionToShow({ name, version })].filter(Boolean).join(' '), ...tags].join(' · ');
 }
 
 // Lines in the order given, as many as fit in `max` characters with a "+N autres" line when cut.

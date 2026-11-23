@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildItemNotification, MAX_LISTED } from '../utils/notification.js';
+import { buildItemNotification, MAX_LISTED, versionToShow } from '../utils/notification.js';
 import { vulnerabilityLink } from '../utils/vulnerability-link.js';
 
 const ITEM = { kind: 'application', name: 'shop', hostname: 'web-01', osFamily: 'linux', organization: 'Test', minSeverity: 'MEDIUM' };
@@ -54,6 +54,13 @@ describe('buildItemNotification', () => {
 		assert.equal(big.hidden, 50);
 		assert.equal(big.groups[0].vulnerabilities.length, MAX_LISTED);
 		assert.equal(big.groups[0].vulnerabilities[0].severity, 'CRITICAL');
+	});
+});
+
+describe('versionToShow', () => {
+	it('drops a version the display name already holds', () => {
+		assert.equal(versionToShow({ name: '7-zip 19.00 (x64)', version: '19.00' }), '');
+		assert.equal(versionToShow({ name: 'openssl', version: '3.0.0' }), '3.0.0');
 	});
 });
 

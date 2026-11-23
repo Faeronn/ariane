@@ -4,6 +4,11 @@ import { vulnerabilityLink } from './vulnerability-link.js';
 // on one application's packages, grouped by software. Email and chat layouts render it.
 
 export const MAX_LISTED = 100;
+
+// The version to print after a software name: none when the name already holds it, as Windows
+// display names often do ("7-Zip 19.00 (x64)").
+export const versionToShow = ({ name, version }) => (version && !String(name).includes(version) ? version : '');
+
 export const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const RANK = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
 

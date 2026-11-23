@@ -1,3 +1,5 @@
+import { versionToShow } from './notification.js';
+
 // Email rendering of an item notification: { subject, html, text }. Table layout with inline styles
 // only (Outlook and webmails ignore style sheets), no image; severities carry a text label, never
 // color alone; the plain-text part says the same.
@@ -67,7 +69,7 @@ function vulnerabilityRow(vulnerability) {
 function groupBlock({ software, vulnerabilities }) {
 	const tags = tagsOf(software).map(tag => `<span style="font-size: 12px; color: #4b5563; border: 1px solid #d1d5db; border-radius: 3px; padding: 1px 6px;">${escapeHtml(tag)}</span>`).join(' ');
 	return `<tr><td style="padding: 16px 24px 4px 24px; ${FONT}">
-		<div style="font-size: 15px; font-weight: bold; color: #111827;">${escapeHtml(software.name)} <span style="font-weight: normal; color: #374151;">${escapeHtml(software.version)}</span> ${tags}</div>
+		<div style="font-size: 15px; font-weight: bold; color: #111827;">${escapeHtml(software.name)} <span style="font-weight: normal; color: #374151;">${escapeHtml(versionToShow(software))}</span> ${tags}</div>
 		<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top: 6px; border-collapse: collapse; ${FONT}">
 			${vulnerabilities.map(vulnerability => vulnerabilityRow(vulnerability)).join('')}
 		</table>
@@ -109,7 +111,8 @@ function renderText(notification) {
 	const countLine = ORDER.filter(severity => counts.bySeverity[severity] > 0).map(severity => `${SEVERITY[severity].label} ${counts.bySeverity[severity]}`).join(' · ');
 	const blocks = groups.map(({ software, vulnerabilities }) => {
 		const tags = tagsOf(software);
-		const header = tags.length > 0 ? `${software.name} ${software.version} (${tags.join(', ')})` : `${software.name} ${software.version}`;
+		const name = [software.name, versionToShow(software)].filter(Boolean).join(' ');
+		const header = tags.length > 0 ? `${name} (${tags.join(', ')})` : name;
 		return [header, ...vulnerabilities.map(vulnerability => textVulnerability(vulnerability))].join('\n');
 	});
 	return [
