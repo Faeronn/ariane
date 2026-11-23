@@ -51,7 +51,7 @@ export async function globalSetup() {
 }
 
 // Reference data seeded by migrations survives resets.
-const KEPT_TABLES = new Set(['schema_migrations', 'software_alias']);
+const KEPT_TABLES = new Set(['schema_migrations', 'software_alias', 'package_alias']);
 
 // Empty every table but the kept ones, then re-seed organization 1 owning the allowed domain.
 export async function reset() {

@@ -1,0 +1,17 @@
+{
+  "resultsPerPage": 1,
+  "startIndex": 0,
+  "totalResults": 270,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-23T13:24:57.963",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:symfony:twig:0.9.0:*:*:*:*:*:*:*",
+        "cpeNameId": "CE40D4C8-86B4-4E33-BFEB-44E7C83334FC"
+      }
+    }
+  ]
+}

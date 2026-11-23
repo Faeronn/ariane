@@ -107,9 +107,20 @@ async function resolve(client, software, options) {
 // distribution package (`3.0.11-1~deb12u2` => `3.0.11`); distributions often backport fixes
 // without changing it, so such matches are flagged `versionNormalized` for review. A synthetic CPE
 // is never built on a version that still carries a packaging revision.
+// The NVD product of an ecosystem package, when a package alias names it.
+async function findPackageAlias({ ecosystem, packageName }) {
+	const [alias] = await database.query("SELECT 'a' AS cpePart, cpeVendor, cpeProduct FROM package_alias WHERE ecosystem = ? AND packageName = ?", [ecosystem, packageName]);
+	return alias;
+}
+
 async function resolveKey(client, key) {
-	// A package version is exact and its name is no display name: no alias, no upstream fallback.
-	if (key.ecosystem) return { cpeName: await resolveByKeyword(client, key), synthetic: false, versionNormalized: false };
+	// A package version is exact and its name is no display name: no program alias, no upstream
+	// fallback; a package alias when one names its NVD product, else a keyword search.
+	if (key.ecosystem) {
+		const alias = await findPackageAlias(key);
+		if (alias) return { ...await resolveByAlias(client, key, alias, { allowSynthetic: true }), versionNormalized: false };
+		return { cpeName: await resolveByKeyword(client, key), synthetic: false, versionNormalized: false };
+	}
 	const upstream = upstreamVersion(key.version);
 	if (!upstream) return {};
 	const packaged = upstream !== key.version;
@@ -127,7 +138,7 @@ async function tick({ client = getNvdClient(), batchSize = BATCH_SIZE } = {}) {
 	const summary = { matched: 0, unmatched: 0, failed: 0 };
 
 	try {
-		const keys = await database.query(`SELECT softwareCpeID, vendor, name, version, ecosystem FROM software_cpe
+		const keys = await database.query(`SELECT softwareCpeID, vendor, name, version, ecosystem, packageName FROM software_cpe
 			WHERE status = 'pending' OR (status = 'unmatched' AND lastCheckedAt < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY))
 			ORDER BY lastCheckedAt IS NOT NULL, lastCheckedAt, softwareCpeID LIMIT ?`, [RETRY_UNMATCHED_AFTER_DAYS, batchSize]);
 

@@ -107,6 +107,19 @@ describe('resolve-cpe runOnce', () => {
 		assert.deepEqual({ ...row, versionNormalized: Number(row.versionNormalized) }, { cpeName: 'cpe:2.3:a:google:chrome:122.0.6261.112:*:*:*:*:*:*:*', versionNormalized: 1 });
 	});
 
+	it('resolves aliased PHP packages to their NVD product, components left alone (real twig and symfony)', async () => {
+		await database.query("INSERT INTO software_cpe (vendor, name, version, ecosystem, packageName) VALUES ('twig', 'twig', '3.30.0', 'Packagist', 'twig/twig'), ('symfony', 'symfony', '7.4.21', 'Packagist', 'symfony/symfony'), ('symfony', 'http-kernel', '7.4.21', 'Packagist', 'symfony/http-kernel')");
+		stub.route('/cpes/2.0', 'cpe:2.3:a:symfony:twig', loadFixture('cpes-match-twig-product.json'));
+		stub.route('/cpes/2.0', 'cpe:2.3:a:sensiolabs:symfony', loadFixture('cpes-match-symfony-product.json'));
+		await runOnce({ client });
+		const rows = await database.query("SELECT packageName, cpeName, cpeSynthetic FROM software_cpe WHERE ecosystem = 'Packagist' ORDER BY packageName");
+		assert.deepEqual(rows.map(({ packageName, cpeName, cpeSynthetic }) => `${packageName}=>${cpeName ?? '-'}${Number(cpeSynthetic) ? ' synthetic' : ''}`), [
+			'symfony/http-kernel=>-',
+			'symfony/symfony=>cpe:2.3:a:sensiolabs:symfony:7.4.21:*:*:*:*:*:*:* synthetic',
+			'twig/twig=>cpe:2.3:a:symfony:twig:3.30.0:*:*:*:*:*:*:* synthetic'
+		]);
+	});
+
 	it('resolves a direct npm dependency without alias nor upstream fallback (real express 4.17.1)', async () => {
 		await database.query("INSERT INTO software_cpe (vendor, name, version, ecosystem, packageName) VALUES ('', 'curl', '1.0.0-1', 'npm', 'curl'), ('', 'express', '4.17.1', 'npm', 'express')");
 		stub.route('/cpes/2.0', 'express 4.17.1', loadFixture('cpes-express-4.17.1.json'));
