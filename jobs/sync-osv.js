@@ -40,25 +40,35 @@ async function fetchRecords(client, ids) {
 	return records.filter(Boolean);
 }
 
-// Store new records: a vulnerability row only when none exists (an NVD row keeps its data), and
-// the id of each record (plus its non-CVE aliases) mapped to that row.
-async function storeRecords(connection, records) {
+// Store fetched records: a new vulnerability row only when none exists (an NVD or Packagist row
+// keeps its data); a refreshed record updates the row only when OSV created it. Each record id (plus
+// its non-CVE aliases) is mapped to its row with the record's modification date.
+async function storeRecords(connection, records, known) {
 	for (const record of records) {
-		const id = storedID(record);
+		const id = known.get(record.id)?.cveID ?? storedID(record);
 		const { cvssScore, severity } = scoreOf(record);
-		await connection.query(`INSERT IGNORE INTO cve (cveID, description, cvssScore, severity, published, lastModified, source)
-			VALUES (?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), 'osv')`,
-		[id, record.summary || record.details?.slice(0, 2000) || '', cvssScore === undefined ? '' : String(cvssScore), severity ?? '', toSqlDateTime(record.published), toSqlDateTime(record.modified)]);
+		const values = [record.summary || record.details?.slice(0, 2000) || '', cvssScore === undefined ? '' : String(cvssScore), severity ?? '', toSqlDateTime(record.published), toSqlDateTime(record.modified)];
+		await connection.query(`INSERT INTO cve (cveID, description, cvssScore, severity, published, lastModified, source)
+			VALUES (?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), 'osv')
+			ON DUPLICATE KEY UPDATE
+				description = IF(source = 'osv', VALUES(description), description), cvssScore = IF(source = 'osv', VALUES(cvssScore), cvssScore),
+				severity = IF(source = 'osv', VALUES(severity), severity), published = IF(source = 'osv', VALUES(published), published),
+				lastModified = IF(source = 'osv', VALUES(lastModified), lastModified)`, [id, ...values]);
 		const osvIDs = [record.id, ...(record.aliases ?? []).filter(alias => !alias.startsWith('CVE-'))];
-		await connection.batch('INSERT IGNORE INTO osv_alias (osvID, cveID) VALUES (?, ?)', osvIDs.map(osvID => [osvID, id]));
+		await connection.batch(`INSERT INTO osv_alias (osvID, cveID, modified) VALUES (?, ?, NULLIF(?, ''))
+			ON DUPLICATE KEY UPDATE modified = VALUES(modified)`, osvIDs.map(osvID => [osvID, id, toSqlDateTime(record.modified)]));
 	}
 }
 
+// OSV ids already stored: their row and the modification date of the record stored.
 async function knownAliases(ids) {
 	if (ids.length === 0) return new Map();
-	const rows = await database.query('SELECT osvID, cveID FROM osv_alias WHERE osvID IN (?)', [ids]);
-	return new Map(rows.map(({ osvID, cveID }) => [osvID, cveID]));
+	const rows = await database.query("SELECT osvID, cveID, DATE_FORMAT(modified, '%Y-%m-%dT%H:%i:%sZ') AS modified FROM osv_alias WHERE osvID IN (?)", [ids]);
+	return new Map(rows.map(({ osvID, cveID, modified }) => [osvID, { cveID, modified }]));
 }
+
+// A known record is stale when OSV reports a later modification than the one stored (to the second).
+const isStale = (stored, modified) => !stored.modified || Math.floor(Date.parse(modified) / 1000) > Date.parse(stored.modified) / 1000;
 
 // One tick: query OSV for a bounded batch of package keys never checked or checked over 24 h ago.
 // Every record is fetched before anything is written, so a failure leaves the keys pending as they were.
@@ -73,17 +83,18 @@ async function tick({ client = getOsvClient(), batchSize = BATCH_SIZE } = {}) {
 			ORDER BY status = 'checked', checkedAt LIMIT ?`, [REFRESH_AFTER_HOURS, batchSize]);
 		if (keys.length === 0) return summary;
 
-		const idsPerKey = await client.queryBatch(keys);
-		const ids = [...new Set(idsPerKey.flat())];
-		const known = await knownAliases(ids);
-		const records = await fetchRecords(client, ids.filter(id => !known.has(id)));
+		const foundPerKey = await client.queryBatch(keys);
+		const modifiedOf = new Map(foundPerKey.flat().map(({ id, modified }) => [id, modified]));
+		const known = await knownAliases([...modifiedOf.keys()]);
+		const due = [...modifiedOf].filter(([id, modified]) => !known.has(id) || isStale(known.get(id), modified)).map(([id]) => id);
+		const records = await fetchRecords(client, due);
 		summary.fetched = records.length;
-		for (const record of records) known.set(record.id, storedID(record));
 
 		await database.transaction(async connection => {
-			await storeRecords(connection, records);
+			await storeRecords(connection, records, known);
+			for (const record of records) if (!known.has(record.id)) known.set(record.id, { cveID: storedID(record) });
 			for (const [index, key] of keys.entries()) {
-				const linked = [...new Set(idsPerKey[index].map(id => known.get(id)).filter(Boolean))];
+				const linked = [...new Set(foundPerKey[index].map(({ id }) => known.get(id)?.cveID).filter(Boolean))];
 				await connection.query("DELETE FROM package_vuln WHERE ecosystem = ? AND name = ? AND version = ? AND source = 'osv'", [key.ecosystem, key.name, key.version]);
 				if (linked.length > 0) await connection.batch("INSERT INTO package_vuln (ecosystem, name, version, cveID, source) VALUES (?, ?, ?, ?, 'osv')", linked.map(cveID => [key.ecosystem, key.name, key.version, cveID]));
 				await connection.query("UPDATE package_vuln_key SET status = 'checked', checkedAt = UTC_TIMESTAMP() WHERE ecosystem = ? AND name = ? AND version = ?", [key.ecosystem, key.name, key.version]);

@@ -17,9 +17,10 @@ const EXPRESS = { ecosystem: 'npm', name: 'express', version: '4.17.1' };
 describe('OSV client', () => {
 	it('returns the vulnerability ids of each package, in order (real answers)', async () => {
 		const ids = await client.queryBatch([EXPRESS, { ecosystem: 'npm', name: 'left-pad', version: '1.3.0' }, { ecosystem: 'PyPI', name: 'requests', version: '2.25.0' }]);
-		assert.deepEqual(ids[0], ['GHSA-qw6h-vgh9-j6wx', 'GHSA-rv95-896h-c2vc']);
+		assert.deepEqual(ids[0].map(({ id }) => id), ['GHSA-qw6h-vgh9-j6wx', 'GHSA-rv95-896h-c2vc']);
+		assert.ok(ids[0].every(({ modified }) => Date.parse(modified) > 0));
 		assert.deepEqual(ids[1], []);
-		assert.ok(ids[2].includes('PYSEC-2023-74'));
+		assert.ok(ids[2].some(({ id }) => id === 'PYSEC-2023-74'));
 		assert.deepEqual(stub.requests[0].body.queries[0], { package: { ecosystem: 'npm', name: 'express' }, version: '4.17.1' });
 	});
 

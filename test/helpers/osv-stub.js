@@ -8,11 +8,12 @@ const REAL_BATCH_PACKAGES = ['npm:express@4.17.1', 'Packagist:symfony/http-kerne
 
 const send = (response, status, body) => response.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(body));
 
-// querybatch answer: per query, its ids as `vulns`, or an empty object when none.
-function batchResults(ids, queries) {
+// querybatch answer: per query, its ids as `vulns` with the record's `modified`, or an empty
+// object when none.
+function batchResults(ids, vulns, queries) {
 	return queries.map(({ package: { ecosystem, name }, version }) => {
 		const found = ids.get(`${ecosystem}:${name}@${version}`) ?? [];
-		return found.length > 0 ? { vulns: found.map(id => ({ id, modified: '2026-11-01T00:00:00Z' })) } : {};
+		return found.length > 0 ? { vulns: found.map(id => ({ id, modified: vulns.get(id)?.modified ?? '2026-11-01T00:00:00Z' })) } : {};
 	});
 }
 
@@ -44,7 +45,7 @@ export async function startOsvStub() {
 			}
 			if (failures.length > 0) return send(response, failures.shift(), { message: 'stub failure' });
 
-			if (request.method === 'POST' && request.url === '/v1/querybatch') return send(response, 200, { results: batchResults(ids, body.queries) });
+			if (request.method === 'POST' && request.url === '/v1/querybatch') return send(response, 200, { results: batchResults(ids, vulns, body.queries) });
 			const vulnId = decodeURIComponent(request.url.replace(/^\/v1\/vulns\//, ''));
 			if (request.method === 'GET' && vulns.has(vulnId)) return send(response, 200, vulns.get(vulnId));
 			return send(response, 404, { code: 5, message: 'Bug not found.' });

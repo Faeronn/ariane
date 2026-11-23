@@ -41,19 +41,20 @@ export function createOsvClient({ baseUrl = DEFAULT_BASE_URL, timeoutMs = 30_000
 		}
 	}
 
-	// Remaining pages of one package's vulnerability ids (querybatch pages per query).
+	// Remaining pages of one package's vulnerabilities (querybatch pages per query).
 	async function remainingIds(item, pageToken) {
-		const ids = [];
+		const found = [];
 		for (let token = pageToken; token;) {
 			const page = await request('POST', '/v1/query', { ...toQuery(item), page_token: token });
-			ids.push(...(page.vulns ?? []).map(({ id }) => id));
+			found.push(...(page.vulns ?? []).map(({ id, modified }) => ({ id, modified })));
 			token = page.next_page_token;
 		}
-		return ids;
+		return found;
 	}
 
 	return {
-		// Vulnerability ids affecting each package version, in the order of `packages`.
+		// Vulnerabilities affecting each package version, in the order of `packages`, as
+		// [{ id, modified }]: `modified` tells when a stored record is out of date.
 		async queryBatch(packages) {
 			const results = [];
 			for (let start = 0; start < packages.length; start += MAX_BATCH) {
@@ -61,9 +62,9 @@ export function createOsvClient({ baseUrl = DEFAULT_BASE_URL, timeoutMs = 30_000
 				const page = await request('POST', '/v1/querybatch', { queries: chunk.map(item => toQuery(item)) });
 				for (const [index, item] of chunk.entries()) {
 					const result = page.results?.[index] ?? {};
-					const ids = (result.vulns ?? []).map(({ id }) => id);
-					if (result.next_page_token) ids.push(...await remainingIds(item, result.next_page_token));
-					results.push(ids);
+					const found = (result.vulns ?? []).map(({ id, modified }) => ({ id, modified }));
+					if (result.next_page_token) found.push(...await remainingIds(item, result.next_page_token));
+					results.push(found);
 				}
 			}
 			return results;

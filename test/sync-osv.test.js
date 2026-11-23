@@ -77,6 +77,24 @@ describe('sync-osv runOnce', () => {
 		assert.deepEqual(await links('npm', 'express'), ['CVE-2024-29041']);
 	});
 
+	it('fetches a known record again when OSV reports a newer version, updating only an OSV row', async () => {
+		await runOnce({ client });
+		const record = { id: 'GHSA-rv95-896h-c2vc', aliases: ['CVE-2024-29041'], summary: 'Corrected summary', modified: '2026-11-20T10:00:00Z', severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H' }] };
+		stub.setVuln(record);
+		await database.query('UPDATE package_vuln_key SET checkedAt = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 25 HOUR)');
+		const refreshed = await runOnce({ client });
+		assert.equal(refreshed.fetched, 1);
+		const [cve] = await database.query("SELECT description, cvssScore FROM cve WHERE cveID = 'CVE-2024-29041'");
+		assert.deepEqual({ description: cve.description, cvssScore: Number(cve.cvssScore) }, { description: 'Corrected summary', cvssScore: 9.8 });
+
+		await database.query("UPDATE cve SET source = 'nvd', description = 'from NVD' WHERE cveID = 'CVE-2024-29041'");
+		stub.setVuln({ ...record, summary: 'Later summary', modified: '2026-11-21T10:00:00Z' });
+		await database.query('UPDATE package_vuln_key SET checkedAt = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 25 HOUR)');
+		await runOnce({ client });
+		const [nvd] = await database.query("SELECT description FROM cve WHERE cveID = 'CVE-2024-29041'");
+		assert.equal(nvd.description, 'from NVD');
+	});
+
 	it('survives an OSV outage: no link written, keys stay pending', async () => {
 		stub.failNext(503, 10);
 		const logs = captureLogs();
