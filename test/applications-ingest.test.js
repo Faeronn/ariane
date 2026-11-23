@@ -48,6 +48,15 @@ describe('POST /agents/applications', () => {
 		]);
 	});
 
+	it('keeps a program and packages of the same name and version on separate keys', async () => {
+		await api(server.baseUrl, 'POST', '/agents/inventory', { headers: { 'X-Agent-Key': machine.apiKey }, body: { osFamily: 'windows', software: [{ name: 'requests', version: '2.25.0' }] } });
+		const npm = lockfileOf({ '': { dependencies: { requests: '2.25.0' } }, 'node_modules/requests': { version: '2.25.0' } });
+		await send({ name: 'node-app', lockfiles: [npm] });
+		await send({ name: 'python-app', lockfiles: [{ filename: 'uv.lock', content: 'version = 1\n[[package]]\nname = "app"\nversion = "0.1.0"\nsource = { editable = "." }\ndependencies = [{ name = "requests" }]\n[[package]]\nname = "requests"\nversion = "2.25.0"\nsource = { registry = "https://pypi.org/simple" }\n' }] });
+		const keys = await database.query("SELECT ecosystem FROM software_cpe WHERE name = 'requests' ORDER BY ecosystem");
+		assert.deepEqual(keys.map(({ ecosystem }) => ecosystem).toSorted(), ['', 'PyPI', 'npm']);
+	});
+
 	it('updates the same application in place with a new snapshot', async () => {
 		const first = await send({ name: 'gesdoc2', lockfiles: [NPM] });
 		const second = await send({ name: 'gesdoc2', lockfiles: [lockfileOf({ '': { dependencies: { ms: '2.1.3' } }, 'node_modules/ms': { version: '2.1.3' } })] });

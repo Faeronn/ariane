@@ -50,7 +50,7 @@ async function unmappedCount(orgID) {
 	const [{ unmapped }] = await database.query(`SELECT COUNT(DISTINCT s.vendor, s.name, s.version) AS unmapped
 		FROM machines m
 		INNER JOIN installed_software s ON s.snapshotID = (SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = m.machineID)
-		LEFT JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
+		LEFT JOIN software_cpe sc ON sc.ecosystem = '' AND sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
 		WHERE m.orgID = ? AND m.revokedAt IS NULL AND (sc.status IS NULL OR sc.status <> 'matched')`, [orgID]);
 	return Number(unmapped);
 }

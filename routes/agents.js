@@ -58,8 +58,7 @@ router.post('/applications', applicationsPerMachine, async (request, response) =
 			// Direct dependencies also go to the NVD resolver, as software keys.
 			const direct = application.packages.filter(item => item.direct);
 			if (direct.length > 0) {
-				await connection.batch(`INSERT INTO software_cpe (vendor, name, version, ecosystem, packageName) VALUES (?, ?, ?, ?, ?)
-					ON DUPLICATE KEY UPDATE ecosystem = COALESCE(ecosystem, VALUES(ecosystem)), packageName = COALESCE(packageName, VALUES(packageName))`,
+				await connection.batch('INSERT IGNORE INTO software_cpe (vendor, name, version, ecosystem, packageName) VALUES (?, ?, ?, ?, ?)',
 				direct.map(item => {
 					const key = softwareKeyOf(item);
 					return [key.vendor, key.name, key.version, item.ecosystem, item.name];

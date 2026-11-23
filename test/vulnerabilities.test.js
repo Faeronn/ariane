@@ -75,6 +75,14 @@ describe('machineVulnerabilities with application dependencies', () => {
 		assert.deepEqual(entry(vulnerabilities, 'CVE-2000-0002').sources, ['nvd']);
 	});
 
+	it('never lends a package finding to a program of the same name and version', async () => {
+		await database.query("INSERT INTO software_cpe (vendor, name, version, cpeName, status, ecosystem) VALUES ('', 'express', '4.17.1', ?, 'matched', '')", ['cpe:2.3:a:other:express:4.17.1:*:*:*:*:*:*:*']);
+		await database.query("INSERT INTO installed_software (snapshotID, vendor, name, version) SELECT MAX(snapshotID), '', 'express', '4.17.1' FROM inventory_snapshot WHERE machineID = ?", [machineID]);
+		const vulnerabilities = await machineVulnerabilities(machineID);
+		const express = entry(vulnerabilities, 'CVE-2024-0001');
+		assert.deepEqual(express.software, [{ name: 'express', version: '4.17.1', ecosystem: 'npm', application: 'shop' }]);
+	});
+
 	it('reads only the latest snapshot of each application', async () => {
 		const vulnerabilities = await machineVulnerabilities(machineID);
 		assert.equal(entry(vulnerabilities, 'CVE-2021-0001'), undefined);

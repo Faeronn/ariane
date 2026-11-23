@@ -55,7 +55,7 @@ const LATEST_DEPENDENCIES = `FROM applications a
 async function countUnresolved(machineID) {
 	const [{ unresolved }] = await database.query(`SELECT
 		(SELECT COUNT(*) FROM installed_software s
-			INNER JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
+			INNER JOIN software_cpe sc ON sc.ecosystem = '' AND sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
 			WHERE s.snapshotID = (SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?) AND ${UNSYNCED_KEY})
 		+ (SELECT COUNT(*) ${LATEST_DEPENDENCIES}
 			INNER JOIN package_vuln_key k ON k.ecosystem = d.ecosystem AND k.name = d.name AND k.version = d.version
