@@ -13,7 +13,7 @@ const INVALID_CODE_MESSAGE = 'Error : Invalid verification code.';
 
 router.post('/signin', signinPerIp, signinPerAccount, async (request, response) => {
 	const username = sanitizeInput(request.body.username);
-	const password = sanitizeInput(request.body.password);
+	const password = readPassword(request.body);
 	if (!username || !password) return response.status(400).send({ message: 'Error : Missing credentials.' });
 
 	try {
@@ -21,7 +21,7 @@ router.post('/signin', signinPerIp, signinPerAccount, async (request, response) 
 		if (users.length === 0) return response.status(401).send({ message: 'Error : Unable to sign in.' });
 
 		const user = users[0];
-		const bcryptResult = await bcrypt.compare(password, user.password);
+		const bcryptResult = await passwordMatches(user, password);
 		if (!bcryptResult) return response.status(401).send({ message: 'Error : Unable to sign in.' });
 		if (user.isVerified !== 1) return response.status(401).send({ message: 'Error : Unable to sign in.' });
 
@@ -42,7 +42,7 @@ router.post('/signup', signupPerIp, async (request, response) => {
 		const firstname = sanitizeInput(request.body.firstname);
 		const lastname = sanitizeInput(request.body.lastname);
 		const username = sanitizeInput(request.body.username);
-		const password = sanitizeInput(request.body.password);
+		const password = readPassword(request.body);
 
 		if (!username || !password || !firstname || !lastname) return response.status(400).send({ message: 'Error : Missing credentials.' });
 		if(!isUsernameValid(username)) return response.status(400).send({ message: 'Error : Invalid username.' });
@@ -153,8 +153,33 @@ router.post('/logout', async (request, response) => {
 	}
 });
 
+// An email address: local part with `+` addressing, a domain of one or more labels (subdomains
+// allowed) ending with a 2 to 63 letter TLD, 254 characters at most.
+const LOCAL_PART = /^[\w.%+-]{1,64}$/;
+const DOMAIN_LABEL = /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i;
+const TLD = /^[a-z]{2,63}$/i;
+
 function isUsernameValid(username) {
-	return /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,5}$/.test(username);
+	if (username.length > 254) return false;
+	const parts = username.split('@');
+	if (parts.length !== 2 || !LOCAL_PART.test(parts[0])) return false;
+	const labels = parts[1].split('.');
+	return labels.length >= 2 && labels.slice(0, -1).every(label => DOMAIN_LABEL.test(label)) && TLD.test(labels.at(-1));
+}
+
+// The password as typed: never sanitized, bcrypt and parameterized queries need no escaping.
+function readPassword(body) {
+	return typeof body?.password === 'string' ? body.password : '';
+}
+
+// Accounts created before passwords stopped being sanitized hold a hash of the sanitized form:
+// it is accepted once, then the hash is upgraded to the password as typed.
+async function passwordMatches(user, password) {
+	if (await bcrypt.compare(password, user.password)) return true;
+	const legacy = sanitizeInput(password);
+	if (legacy === password || !(await bcrypt.compare(legacy, user.password))) return false;
+	await database.query('UPDATE users SET password = ? WHERE userID = ?', [await bcrypt.hash(password, 10), user.userID]);
+	return true;
 }
 
 export default router;

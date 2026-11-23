@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { api, createUser, verifyUser, signIn, createSignedInUser, getVerificationCode, countRows, captureLogs, startThrowawayApp, PASSWORD } from './helpers/fixtures.js';
 import authenticateUser from '../middleware/authenticate-user.js';
 import { startServer } from './helpers/server.js';
-import { reset } from './helpers/database.js';
+import { reset, TEST_ORG_ID } from './helpers/database.js';
+import bcrypt from 'bcrypt';
 import database from '../utils/database.js';
 import { hashToken } from '../utils/jwt.js';
 
@@ -36,6 +37,54 @@ describe('POST /auth/signup', () => {
 		const response = await api(server.baseUrl, 'POST', '/auth/signup', { body: { username: 'not-an-email', password: PASSWORD, firstname: 'Bob', lastname: 'B' } });
 		assert.equal(response.status, 400);
 	});
+});
+
+const signup = (username, password = PASSWORD) => api(server.baseUrl, 'POST', '/auth/signup', { body: { username, password, firstname: 'Test', lastname: 'User' } });
+
+// A test refusing each address. Five addresses per test at most: signup allows 5 calls per hour and IP.
+const refuses = usernames => async () => {
+	for (const username of usernames) {
+		const response = await signup(username);
+		assert.equal(response.status, 400, username);
+		assert.equal(response.body.message, 'Error : Invalid username.');
+	}
+};
+
+describe('passwords and emails as users type them', () => {
+	it('keeps quotes and angle brackets in a password', async () => {
+		const password = `a'b"c<d>e-${PASSWORD}`;
+		const response = await signup('quote@ariane.test', password);
+		const user = { username: 'quote@ariane.test', userID: Number(response.body.user.userID) };
+		await verifyUser(server.baseUrl, user);
+		const signin = await api(server.baseUrl, 'POST', '/auth/signin', { body: { username: user.username, password } });
+		assert.equal(signin.status, 200);
+		const stripped = await api(server.baseUrl, 'POST', '/auth/signin', { body: { username: user.username, password: password.replaceAll(/[<>'"]/g, '') } });
+		assert.equal(stripped.status, 401);
+	});
+
+	it('signs in an account hashed on the sanitized password and upgrades its hash', async () => {
+		const password = `x'y${PASSWORD}`;
+		const user = await createUser(server.baseUrl);
+		await verifyUser(server.baseUrl, user);
+		const legacyHash = await bcrypt.hash(password.replaceAll(/[<>'"]/g, ''), 4);
+		await database.query('UPDATE users SET password = ? WHERE userID = ?', [legacyHash, user.userID]);
+
+		const signin = await api(server.baseUrl, 'POST', '/auth/signin', { body: { username: user.username, password } });
+		assert.equal(signin.status, 200);
+		const [{ password: upgraded }] = await database.query('SELECT password FROM users WHERE userID = ?', [user.userID]);
+		assert.ok(await bcrypt.compare(password, upgraded));
+	});
+
+	it('accepts plus addressing and a subdomain listed as allowed', async () => {
+		await database.query('INSERT INTO domain (domainName, orgID) VALUES (?, ?)', ['mail.ariane.test', TEST_ORG_ID]);
+		const plus = await signup('first.last+ariane@mail.ariane.test');
+		assert.equal(plus.status, 200);
+		const longTld = await signup('second@ariane.engineering');
+		assert.equal(longTld.status, 403); // a valid address, on a domain that is not allowed
+	});
+
+	it('refuses addresses without exactly one at sign or with spaces', refuses(['no-at-sign.ariane.test', 'two@@ariane.test', 'a b@ariane.test']));
+	it('refuses a domain without TLD, a label starting with a hyphen and an over-long address', refuses(['bob@ariane', 'bob@-ariane.test', `${'a'.repeat(250)}@ariane.test`]));
 });
 
 describe('POST /auth/signin', () => {
