@@ -50,6 +50,8 @@ Le schéma vient des fichiers de `migrations/`, appliqués dans l’ordre et une
 
 `npm run migrate` utilise l’utilisateur du `.env` : il lui faut les droits de modifier le schéma (`CREATE`, `ALTER`, `INDEX`, `REFERENCES`, `DROP`).
 
+Arrêter l’API avant `npm run migrate` : une instance encore démarrée avec l’ancien code peut résoudre à nouveau, avec l’ancienne logique, des lignes qu’une migration vient de remettre à zéro.
+
 Sauvegarder la base avant une migration, avec l’utilisateur applicatif (sans droit `LOCK TABLES`, d’où `--single-transaction`) :
 ```
 mariadb-dump --single-transaction -u ariane -p ariane > ariane-backup.sql
