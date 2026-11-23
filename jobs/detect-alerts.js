@@ -31,11 +31,27 @@ async function detectMachine({ machineID, alertsBaselineAt }) {
 	});
 }
 
+// Software of the machine's latest snapshot still waiting for its CPE or for that CPE's CVEs.
+async function countUnresolved(machineID) {
+	const [{ unresolved }] = await database.query(`SELECT COUNT(*) AS unresolved
+		FROM installed_software s
+		INNER JOIN software_cpe sc ON sc.vendor = s.vendor AND sc.name = s.name AND sc.version = s.version
+		WHERE s.snapshotID = (SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?)
+			AND (sc.status = 'pending' OR (sc.status = 'matched' AND sc.cvesCheckedAt IS NULL))`, [machineID]);
+	return Number(unresolved);
+}
+
 async function tick({ batchSize = BATCH_SIZE } = {}) {
 	const machines = await database.query(`SELECT machineID, alertsBaselineAt FROM machines WHERE revokedAt IS NULL
 		ORDER BY alertsCheckedAt IS NOT NULL, alertsCheckedAt, machineID LIMIT ?`, [batchSize]);
-	const summary = { machines: 0, opened: 0, resolved: 0 };
+	const summary = { machines: 0, opened: 0, resolved: 0, deferred: 0 };
 	for (const machine of machines) {
+		// The baseline must hold the machine's complete first state: CVEs found later for software
+		// already there would otherwise be alerted as new. Not yet checked, it is retried first.
+		if (!machine.alertsBaselineAt && await countUnresolved(machine.machineID) > 0) {
+			summary.deferred += 1;
+			continue;
+		}
 		const { opened, resolved } = await detectMachine(machine);
 		summary.machines += 1;
 		summary.opened += opened;

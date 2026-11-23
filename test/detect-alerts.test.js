@@ -17,7 +17,7 @@ beforeEach(async () => {
 		await database.query('INSERT INTO inventory_snapshot (snapshotID, machineID, collectedAt, receivedAt) VALUES (?, ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())', [machineID, machineID]);
 		await database.query("INSERT INTO installed_software (snapshotID, vendor, name, version) VALUES (?, 'openssl', 'openssl', '3.0.0')", [machineID]);
 	}
-	await database.query("INSERT INTO software_cpe (vendor, name, version, cpeName, status) VALUES ('openssl', 'openssl', '3.0.0', ?, 'matched')", [CPE]);
+	await database.query("INSERT INTO software_cpe (vendor, name, version, cpeName, status, cvesCheckedAt) VALUES ('openssl', 'openssl', '3.0.0', ?, 'matched', UTC_TIMESTAMP())", [CPE]);
 	for (const cveID of ['CVE-2000-0001', 'CVE-2000-0002']) {
 		await database.query('INSERT INTO cve (cveID, cvssScore, severity) VALUES (?, 9.8, ?)', [cveID, 'CRITICAL']);
 		await database.query('INSERT INTO cpe_cve (cpeName, cveID) VALUES (?, ?)', [CPE, cveID]);
@@ -68,5 +68,44 @@ describe('detect-alerts', () => {
 		assert.deepEqual(machines.map(({ machineID }) => machineID), [1]);
 		await database.query('DELETE FROM machines WHERE machineID = 1');
 		assert.deepEqual(await state(), []);
+	});
+});
+
+// One more software on machine 1's latest snapshot, its key in `status`.
+const addSoftware = (name, status) => Promise.all([
+	database.query("INSERT INTO installed_software (snapshotID, vendor, name, version) VALUES (1, '', ?, '1.0')", [name]),
+	database.query("INSERT INTO software_cpe (vendor, name, version, status) VALUES ('', ?, '1.0', ?)", [name, status])
+]);
+
+describe('detect-alerts baseline readiness', () => {
+	it('defers the baseline while a software key of the machine is pending', async () => {
+		await addSoftware('tool', 'pending');
+		const summary = await runOnce();
+		assert.equal(summary.deferred, 1);
+		assert.deepEqual(await state(), []);
+		const [machine] = await database.query('SELECT alertsBaselineAt, alertsCheckedAt FROM machines WHERE machineID = 1');
+		assert.ok(!machine.alertsBaselineAt && !machine.alertsCheckedAt, 'neither baseline nor check recorded');
+	});
+
+	it('defers it while a matched CPE has not had its CVEs synced yet', async () => {
+		await database.query('UPDATE software_cpe SET cvesCheckedAt = NULL');
+		const summary = await runOnce();
+		assert.equal(summary.deferred, 1);
+	});
+
+	it('takes it once every key is resolved and synced, unmatched ones included', async () => {
+		await addSoftware('tool', 'pending');
+		await runOnce();
+		await database.query("UPDATE software_cpe SET status = 'unmatched' WHERE name = 'tool'");
+		await runOnce();
+		assert.deepEqual(await state(), ['1:CVE-2000-0001:open:sent', '1:CVE-2000-0002:open:sent']);
+	});
+
+	it('does not wait on a machine that already has its baseline', async () => {
+		await afterBaseline();
+		await addSoftware('tool', 'pending');
+		const summary = await runOnce();
+		assert.equal(summary.deferred, 0);
+		assert.deepEqual(await state(), ['1:CVE-2000-0001:open:unsent', '1:CVE-2000-0002:open:unsent']);
 	});
 });
