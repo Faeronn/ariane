@@ -133,4 +133,22 @@ describe('detect-alerts with application dependencies', () => {
 		await runOnce();
 		assert.deepEqual(await state(), ['1:CVE-2000-0001:open:sent', '1:CVE-2000-0002:open:sent', '1:CVE-2024-29041:open:unsent']);
 	});
+	it('takes a baseline for an application registered on an already monitored machine', async () => {
+		await afterBaseline();
+		await database.query("UPDATE machine_cve_state SET emailSentAt = UTC_TIMESTAMP(), webhookSentAt = UTC_TIMESTAMP()");
+		await addApplication('checked');
+		await database.query("INSERT INTO cve (cveID, cvssScore, severity) VALUES ('CVE-2024-29041', 6.1, 'MEDIUM')");
+		await database.query("INSERT INTO package_vuln (ecosystem, name, version, cveID) VALUES ('npm', 'express', '4.17.1', 'CVE-2024-29041')");
+		await runOnce();
+		assert.deepEqual(await state(), ['1:CVE-2000-0001:open:unsent', '1:CVE-2000-0002:open:unsent', '1:CVE-2024-29041:open:sent']);
+		const [application] = await database.query('SELECT alertsBaselineAt FROM applications WHERE applicationID = 1');
+		assert.ok(application.alertsBaselineAt);
+	});
+
+	it('waits for the packages of a new application before its baseline, even on a monitored machine', async () => {
+		await afterBaseline();
+		await addApplication('pending');
+		const summary = await runOnce();
+		assert.equal(summary.deferred, 1);
+	});
 });

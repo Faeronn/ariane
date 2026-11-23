@@ -6,26 +6,39 @@ import baseLogger from '../utils/logger.js';
 const BATCH_SIZE = 50;
 const logger = baseLogger.child({ job: 'detect-alerts' });
 
+// Applications of the machine registered since its last detection: their first state is a baseline
+// too, so registering an application on a monitored machine does not alert its existing findings.
+const newApplications = machineID => database.query('SELECT applicationID, name FROM applications WHERE machineID = ? AND alertsBaselineAt IS NULL', [machineID]);
+
 // Compare a machine's current CVEs with its recorded state: open new ones (unsent, or already
-// marked sent during the machine's baseline run), resolve the ones gone, reopen the ones back.
-async function detectMachine({ machineID, alertsBaselineAt }) {
+// marked sent when they belong to a baseline: the machine's first run, or only to applications
+// seen for the first time), resolve the ones gone, reopen the ones back.
+async function detectMachine({ machineID, alertsBaselineAt }, applications) {
 	const vulnerabilities = await machineVulnerabilities(machineID);
 	const current = new Set(vulnerabilities.map(({ cveID }) => cveID));
-	const baseline = !alertsBaselineAt;
+	const firstSeen = new Set(applications.map(({ name }) => name));
+	const baseline = new Set(vulnerabilities
+		.filter(({ software }) => !alertsBaselineAt || software.every(({ application }) => firstSeen.has(application)))
+		.map(({ cveID }) => cveID));
 
 	return database.transaction(async connection => {
 		const state = await connection.query('SELECT cveID, resolvedAt FROM machine_cve_state WHERE machineID = ? FOR UPDATE', [machineID]);
 		const known = new Map(state.map(({ cveID, resolvedAt }) => [cveID, resolvedAt]));
-		const sentAt = baseline ? 'UTC_TIMESTAMP()' : 'NULL';
 
 		const opened = [...current].filter(cveID => !known.has(cveID));
 		const reopened = [...current].filter(cveID => known.has(cveID) && known.get(cveID));
 		const resolved = [...known].filter(([cveID, resolvedAt]) => !resolvedAt && !current.has(cveID)).map(([cveID]) => cveID);
 
-		if (opened.length > 0) await connection.batch(`INSERT INTO machine_cve_state (machineID, cveID, firstSeenAt, emailSentAt, webhookSentAt) VALUES (?, ?, UTC_TIMESTAMP(), ${sentAt}, ${sentAt})`, opened.map(cveID => [machineID, cveID]));
-		if (reopened.length > 0) await connection.batch(`UPDATE machine_cve_state SET resolvedAt = NULL, firstSeenAt = UTC_TIMESTAMP(), emailSentAt = ${sentAt}, webhookSentAt = ${sentAt} WHERE machineID = ? AND cveID = ?`, reopened.map(cveID => [machineID, cveID]));
+		for (const sent of [true, false]) {
+			const openedNow = opened.filter(cveID => baseline.has(cveID) === sent);
+			const reopenedNow = reopened.filter(cveID => baseline.has(cveID) === sent);
+			const stamp = sent ? 'UTC_TIMESTAMP()' : 'NULL';
+			if (openedNow.length > 0) await connection.batch(`INSERT INTO machine_cve_state (machineID, cveID, firstSeenAt, emailSentAt, webhookSentAt) VALUES (?, ?, UTC_TIMESTAMP(), ${stamp}, ${stamp})`, openedNow.map(cveID => [machineID, cveID]));
+			if (reopenedNow.length > 0) await connection.batch(`UPDATE machine_cve_state SET resolvedAt = NULL, firstSeenAt = UTC_TIMESTAMP(), emailSentAt = ${stamp}, webhookSentAt = ${stamp} WHERE machineID = ? AND cveID = ?`, reopenedNow.map(cveID => [machineID, cveID]));
+		}
 		if (resolved.length > 0) await connection.batch('UPDATE machine_cve_state SET resolvedAt = UTC_TIMESTAMP() WHERE machineID = ? AND cveID = ?', resolved.map(cveID => [machineID, cveID]));
 		await connection.query('UPDATE machines SET alertsBaselineAt = COALESCE(alertsBaselineAt, UTC_TIMESTAMP()), alertsCheckedAt = UTC_TIMESTAMP() WHERE machineID = ?', [machineID]);
+		if (applications.length > 0) await connection.query('UPDATE applications SET alertsBaselineAt = UTC_TIMESTAMP() WHERE applicationID IN (?)', [applications.map(({ applicationID }) => applicationID)]);
 
 		return { opened: opened.length + reopened.length, resolved: resolved.length };
 	});
@@ -58,13 +71,15 @@ async function tick({ batchSize = BATCH_SIZE } = {}) {
 		ORDER BY alertsCheckedAt IS NOT NULL, alertsCheckedAt, machineID LIMIT ?`, [batchSize]);
 	const summary = { machines: 0, opened: 0, resolved: 0, deferred: 0 };
 	for (const machine of machines) {
-		// The baseline must hold the machine's complete first state: CVEs found later for software
-		// already there would otherwise be alerted as new. Not yet checked, it is retried first.
-		if (!machine.alertsBaselineAt && await countUnresolved(machine.machineID) > 0) {
+		// A baseline (the machine's, or a new application's) must hold the complete first state: CVEs
+		// found later for software already there would otherwise be alerted as new. Not yet checked,
+		// the machine is retried first.
+		const applications = await newApplications(machine.machineID);
+		if ((!machine.alertsBaselineAt || applications.length > 0) && await countUnresolved(machine.machineID) > 0) {
 			summary.deferred += 1;
 			continue;
 		}
-		const { opened, resolved } = await detectMachine(machine);
+		const { opened, resolved } = await detectMachine(machine, applications);
 		summary.machines += 1;
 		summary.opened += opened;
 		summary.resolved += resolved;
