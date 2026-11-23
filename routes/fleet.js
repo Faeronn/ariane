@@ -38,6 +38,14 @@ async function vulnerabilityFigures(orgID) {
 	return { total: cves.size, bySeverity, affectedMachines, topCves };
 }
 
+// Applications registered on the organization's active machines.
+async function applicationCount(orgID) {
+	const [{ total }] = await database.query(`SELECT COUNT(*) AS total FROM applications a
+		INNER JOIN machines m ON m.machineID = a.machineID
+		WHERE a.orgID = ? AND m.revokedAt IS NULL`, [orgID]);
+	return { total: Number(total) };
+}
+
 async function unmappedCount(orgID) {
 	const [{ unmapped }] = await database.query(`SELECT COUNT(DISTINCT s.vendor, s.name, s.version) AS unmapped
 		FROM machines m
@@ -51,8 +59,8 @@ async function unmappedCount(orgID) {
 router.get('/summary', async (request, response) => {
 	try {
 		const { orgID } = request.user;
-		const [machines, vulnerabilities, unmappedSoftware] = await Promise.all([machineCounts(orgID), vulnerabilityFigures(orgID), unmappedCount(orgID)]);
-		return response.status(200).send({ message: 'Fleet summary retrieved.', machines, vulnerabilities, unmappedSoftware });
+		const [machines, applications, vulnerabilities, unmappedSoftware] = await Promise.all([machineCounts(orgID), applicationCount(orgID), vulnerabilityFigures(orgID), unmappedCount(orgID)]);
+		return response.status(200).send({ message: 'Fleet summary retrieved.', machines, applications, vulnerabilities, unmappedSoftware });
 	} catch (error) {
 		request.log.error(error);
 		return response.status(500).send({ message: 'Error : Unable to summarize the fleet.' });

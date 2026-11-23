@@ -108,10 +108,13 @@ Seules les URL de webhook Slack (`https://hooks.slack.com/services/…`) et Disc
 | GET     | /machines             | membre | Liste des machines           |
 | GET     | /machines/:id         | membre | Détails machine              |
 | GET     | /machines/:id/vulns   | membre | Vulnérabilités détectées     |
-| GET     | /fleet/summary        | membre | Résumé de flotte : machines (actives, révoquées, sans nouvelles depuis 7 jours), CVE par sévérité, machines touchées, 10 CVE les plus répandues, logiciels sans CPE |
+| GET     | /fleet/summary        | membre | Résumé de flotte : machines (actives, révoquées, sans nouvelles depuis 7 jours), applications, vulnérabilités (logiciels et dépendances) par sévérité, machines touchées, 10 CVE les plus répandues, logiciels sans CPE |
 | GET     | /software/unmapped    | membre | Logiciels sans CPE des machines actives (dernier snapshot), du plus répandu au moins répandu : ce qui échappe à la détection |
+| GET     | /applications         | membre | Applications de l’organisation (machine, nombre de paquets, dont directs) |
+| GET     | /applications/:id     | membre | Paquets du dernier snapshot d’une application (écosystème, version, `direct`, `dev`) |
+| GET     | /applications/:id/vulns | membre | Vulnérabilités des dépendances (NVD et OSV croisés, `sources`), `unscanned` : paquets pas encore vérifiés par OSV |
 
-Les routes `/machines`, `/users`, `/software`, `/organization` et `/fleet` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
+Les routes `/machines`, `/applications`, `/users`, `/software`, `/organization` et `/fleet` exigent `Authorization: Bearer <access token>`. Les routes `/agents` exigent l’en-tête `X-Agent-Key: <clé agent>` d’une machine enrôlée et non révoquée. La machine d’une autre organisation répond 404, comme un identifiant inconnu.
 
 Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et `version` facultatifs) :
 ```json
