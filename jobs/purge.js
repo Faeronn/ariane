@@ -26,9 +26,13 @@ const OLD_APPLICATION_SNAPSHOTS = `DELETE FROM application_snapshot WHERE snapsh
 	) AS old
 )`;
 // Then, in dependency order, what no machine or application references any more.
+// A key stays while an installed program or a direct dependency still uses it.
 const ORPHAN_SOFTWARE_KEYS = `DELETE sc FROM software_cpe sc
 	LEFT JOIN installed_software s ON s.vendor = sc.vendor AND s.name = sc.name AND s.version = sc.version
-	WHERE s.softwareID IS NULL`;
+	WHERE s.softwareID IS NULL AND NOT EXISTS (
+		SELECT 1 FROM application_dependency d
+		WHERE d.direct = 1 AND d.ecosystem = sc.ecosystem AND d.name = sc.packageName AND d.version = sc.version
+	)`;
 const ORPHAN_CPE_LINKS = `DELETE cc FROM cpe_cve cc
 	LEFT JOIN software_cpe sc ON sc.cpeName = cc.cpeName
 	WHERE sc.softwareCpeID IS NULL`;

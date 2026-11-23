@@ -1,5 +1,6 @@
 import { getNvdClient, NvdError } from '../utils/nvd.js';
 import { productCandidates } from '../utils/software-name.js';
+import { ECOSYSTEM_TARGETS } from '../utils/package-key.js';
 import database from '../utils/database.js';
 import { withJobLock } from '../utils/job-lock.js';
 import baseLogger from '../utils/logger.js';
@@ -14,7 +15,7 @@ let running = false;
 // CPE 2.3 formatted string => its fields (`cpe:2.3:part:vendor:product:version:update:...`).
 function parseCpe(cpeName) {
 	const fields = cpeName.split(':');
-	return { part: fields[2], vendor: fields[3], product: fields[4], version: fields[5], update: fields[6] };
+	return { part: fields[2], vendor: fields[3], product: fields[4], version: fields[5], update: fields[6], targetSoftware: fields[10] };
 }
 
 // Software names use spaces, CPE products use underscores.
@@ -29,13 +30,17 @@ export function upstreamVersion(version) {
 
 // Pick the CPE of `software` among NVD search results: same product and exact version, a release
 // (no alpha/beta update), vendor matching when the inventory gave one, deprecated names replaced
-// by their successor. Returns the cpeName only when exactly one remains, else undefined.
+// by their successor. A package of an ecosystem only takes a CPE made for it (target_sw `node.js`
+// for npm...) or for any platform, which keeps homonyms out. Returns the cpeName only when exactly
+// one remains, else undefined.
 export function pickCpe(software, products) {
 	const product = toCpeToken(software.name);
 	const vendor = software.vendor ? toCpeToken(software.vendor) : undefined;
+	const targets = software.ecosystem ? new Set(['*', '-', ECOSYSTEM_TARGETS[software.ecosystem]]) : undefined;
 
 	const candidates = products.map(({ cpe }) => cpe).filter(cpe => {
 		const fields = parseCpe(cpe.cpeName);
+		if (targets && !targets.has(fields.targetSoftware)) return false;
 		return fields.part === 'a' && fields.product === product && fields.version === software.version && RELEASE_UPDATES.has(fields.update);
 	});
 	const sameVendor = vendor ? candidates.filter(cpe => parseCpe(cpe.cpeName).vendor === vendor) : candidates;
@@ -100,6 +105,8 @@ async function resolve(client, software, options) {
 // without changing it, so such matches are flagged `versionNormalized` for review. A synthetic CPE
 // is never built on a version that still carries a packaging revision.
 async function resolveKey(client, key) {
+	// A package version is exact and its name is no display name: no alias, no upstream fallback.
+	if (key.ecosystem) return { cpeName: await resolveByKeyword(client, key), synthetic: false, versionNormalized: false };
 	const upstream = upstreamVersion(key.version);
 	if (!upstream) return {};
 	const packaged = upstream !== key.version;
@@ -117,7 +124,7 @@ async function tick({ client = getNvdClient(), batchSize = BATCH_SIZE } = {}) {
 	const summary = { matched: 0, unmatched: 0, failed: 0 };
 
 	try {
-		const keys = await database.query(`SELECT softwareCpeID, vendor, name, version FROM software_cpe
+		const keys = await database.query(`SELECT softwareCpeID, vendor, name, version, ecosystem FROM software_cpe
 			WHERE status = 'pending' OR (status = 'unmatched' AND lastCheckedAt < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY))
 			ORDER BY lastCheckedAt IS NOT NULL, lastCheckedAt, softwareCpeID LIMIT ?`, [RETRY_UNMATCHED_AFTER_DAYS, batchSize]);
 

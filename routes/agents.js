@@ -1,6 +1,7 @@
 import authenticateAgent from '../middleware/authenticate-agent.js';
 import { validateInventory } from '../utils/inventory.js';
 import { validateApplication } from '../utils/application.js';
+import { softwareKeyOf } from '../utils/package-key.js';
 import { inventoryPerMachine, applicationsPerMachine } from '../middleware/rate-limit.js';
 import database from '../utils/database.js';
 import express from 'express';
@@ -53,6 +54,16 @@ router.post('/applications', applicationsPerMachine, async (request, response) =
 				const rows = application.packages.map(({ ecosystem, name, version }) => [ecosystem, name, version]);
 				await connection.batch('INSERT INTO application_dependency (snapshotID, ecosystem, name, version, direct, dev) VALUES (?, ?, ?, ?, ?, ?)', application.packages.map(({ ecosystem, name, version, direct, dev }) => [insertedID, ecosystem, name, version, direct, dev]));
 				await connection.batch('INSERT IGNORE INTO package_vuln_key (ecosystem, name, version) VALUES (?, ?, ?)', rows);
+			}
+			// Direct dependencies also go to the NVD resolver, as software keys.
+			const direct = application.packages.filter(item => item.direct);
+			if (direct.length > 0) {
+				await connection.batch(`INSERT INTO software_cpe (vendor, name, version, ecosystem, packageName) VALUES (?, ?, ?, ?, ?)
+					ON DUPLICATE KEY UPDATE ecosystem = COALESCE(ecosystem, VALUES(ecosystem)), packageName = COALESCE(packageName, VALUES(packageName))`,
+				direct.map(item => {
+					const key = softwareKeyOf(item);
+					return [key.vendor, key.name, key.version, item.ecosystem, item.name];
+				}));
 			}
 			return { applicationID: id, snapshotID: insertedID };
 		});

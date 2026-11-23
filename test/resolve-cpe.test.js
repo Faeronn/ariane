@@ -107,6 +107,17 @@ describe('resolve-cpe runOnce', () => {
 		assert.deepEqual({ ...row, versionNormalized: Number(row.versionNormalized) }, { cpeName: 'cpe:2.3:a:google:chrome:122.0.6261.112:*:*:*:*:*:*:*', versionNormalized: 1 });
 	});
 
+	it('resolves a direct npm dependency without alias nor upstream fallback (real express 4.17.1)', async () => {
+		await database.query("INSERT INTO software_cpe (vendor, name, version, ecosystem, packageName) VALUES ('', 'curl', '1.0.0-1', 'npm', 'curl'), ('', 'express', '4.17.1', 'npm', 'express')");
+		stub.route('/cpes/2.0', 'express 4.17.1', loadFixture('cpes-express-4.17.1.json'));
+		await runOnce({ client });
+		const express = await keyRow('express');
+		assert.deepEqual({ status: express.status, cpeName: express.cpeName }, { status: 'matched', cpeName: 'cpe:2.3:a:openjsf:express:4.17.1:*:*:*:*:node.js:*:*' });
+		// npm `curl` is not the curl program: no alias request, and no retry on `1.0.0`.
+		const curlSearches = stub.requests.filter(({ query }) => JSON.stringify(query).includes('curl'));
+		assert.deepEqual(curlSearches.map(({ query }) => query.keywordSearch), ['curl 1.0.0-1']);
+	});
+
 	describe('aliases from the real-app validation', () => {
 		it('keeps the first three parts of a Windows build (real MariaDB 12.3.2.0, .NET 8.0.21.35325)', async () => {
 			stub.route('/cpes/2.0', 'cpe:2.3:a:mariadb:mariadb:12.3.2', loadFixture('cpes-match-mariadb-12.3.2.json'));
@@ -249,6 +260,25 @@ describe('resolve-cpe runOnce', () => {
 		await runOnce({ client });
 		const openssl = await keyRow('openssl');
 		assert.equal(openssl.status, 'matched');
+	});
+});
+
+const productsOf = cpeNames => cpeNames.map(cpeName => ({ cpe: { cpeName } }));
+
+describe('pickCpe for an ecosystem package', () => {
+	it('takes a CPE made for the ecosystem or for any platform', () => {
+		const express = { ecosystem: 'npm', vendor: '', name: 'express', version: '4.17.1' };
+		assert.equal(pickCpe(express, productsOf(['cpe:2.3:a:openjsf:express:4.17.1:*:*:*:*:node.js:*:*'])), 'cpe:2.3:a:openjsf:express:4.17.1:*:*:*:*:node.js:*:*');
+		assert.equal(pickCpe(express, productsOf(['cpe:2.3:a:openjsf:express:4.17.1:*:*:*:*:*:*:*'])), 'cpe:2.3:a:openjsf:express:4.17.1:*:*:*:*:*:*:*');
+	});
+
+	it('refuses a homonym made for another platform', () => {
+		const debug = { ecosystem: 'npm', vendor: '', name: 'debug', version: '2.6.9' };
+		assert.equal(pickCpe(debug, productsOf(['cpe:2.3:a:acme:debug:2.6.9:*:*:*:*:python:*:*'])), undefined);
+	});
+
+	it('keeps accepting any target for installed programs', () => {
+		assert.equal(pickCpe({ vendor: '', name: 'debug', version: '2.6.9' }, productsOf(['cpe:2.3:a:acme:debug:2.6.9:*:*:*:*:python:*:*'])), 'cpe:2.3:a:acme:debug:2.6.9:*:*:*:*:python:*:*');
 	});
 });
 

@@ -40,6 +40,14 @@ describe('POST /agents/applications', () => {
 		assert.equal(Number(pending), 6);
 	});
 
+	it('sends only direct dependencies to the NVD resolver, as software keys', async () => {
+		await send({ name: 'gesdoc2', lockfiles: [NPM] });
+		const keys = await database.query("SELECT vendor, name, version, ecosystem, packageName, status FROM software_cpe ORDER BY name");
+		assert.deepEqual(keys.map(({ name, version, ecosystem, packageName, status }) => `${ecosystem}:${packageName}=>${name}@${version}:${status}`), [
+			'npm:express=>express@5.3.0:pending', 'npm:nodemailer=>nodemailer@10.2.0:pending', 'npm:typescript=>typescript@6.0.3:pending'
+		]);
+	});
+
 	it('updates the same application in place with a new snapshot', async () => {
 		const first = await send({ name: 'gesdoc2', lockfiles: [NPM] });
 		const second = await send({ name: 'gesdoc2', lockfiles: [lockfileOf({ '': { dependencies: { ms: '2.1.3' } }, 'node_modules/ms': { version: '2.1.3' } })] });

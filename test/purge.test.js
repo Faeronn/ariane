@@ -30,6 +30,9 @@ async function seed() {
 		await database.query("INSERT INTO application_dependency (snapshotID, ecosystem, name, version) VALUES (?, 'npm', ?, '1.0.0')", [snapshotID, name]);
 		await database.query("INSERT INTO package_vuln_key (ecosystem, name, version, status) VALUES ('npm', ?, '1.0.0', 'checked')", [name]);
 	}
+	// Software keys of direct dependencies: kept while a snapshot still lists the package as direct.
+	await database.query("UPDATE application_dependency SET direct = 1");
+	await database.query("INSERT INTO software_cpe (vendor, name, version, status, ecosystem, packageName) VALUES ('', 'old-pkg', '1.0.0', 'unmatched', 'npm', 'old-pkg'), ('', 'cur-pkg', '1.0.0', 'unmatched', 'npm', 'cur-pkg')");
 	for (const [name, cveID] of [['old-pkg', 'GHSA-old'], ['cur-pkg', 'GHSA-cur']]) {
 		await database.query('INSERT INTO cve (cveID) VALUES (?)', [cveID]);
 		await database.query("INSERT INTO package_vuln (ecosystem, name, version, cveID) VALUES ('npm', ?, '1.0.0', ?)", [name, cveID]);
@@ -51,7 +54,7 @@ describe('purge', () => {
 	});
 
 	it('keeps software keys and CVE links still used by any machine', async () => {
-		assert.deepEqual(ids(await database.query('SELECT name FROM software_cpe ORDER BY 1')), ['current', 'shared', 'stale']);
+		assert.deepEqual(ids(await database.query('SELECT name FROM software_cpe ORDER BY 1')), ['cur-pkg', 'current', 'shared', 'stale']);
 		assert.deepEqual(ids(await database.query('SELECT cpeName FROM cpe_cve ORDER BY 1')), ['cpe:y', 'cpe:z']);
 	});
 
@@ -63,7 +66,7 @@ describe('purge', () => {
 
 	it('deletes vulnerabilities neither a CPE nor a package links to', async () => {
 		assert.deepEqual(ids(await database.query('SELECT cveID FROM cve ORDER BY 1')), ['CVE-2', 'CVE-3', 'GHSA-cur']);
-		assert.deepEqual(summary, { snapshots: 2, applicationSnapshots: 1, softwareKeys: 1, cpeLinks: 1, packageKeys: 1, packageLinks: 1, cves: 3 });
+		assert.deepEqual(summary, { snapshots: 2, applicationSnapshots: 1, softwareKeys: 2, cpeLinks: 1, packageKeys: 1, packageLinks: 1, cves: 3 });
 	});
 
 	it('never runs while another instance holds the purge lock', async () => {

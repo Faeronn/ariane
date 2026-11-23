@@ -1,0 +1,23 @@
+{
+  "resultsPerPage": 1,
+  "startIndex": 0,
+  "totalResults": 1,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-23T12:16:45.063",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:openjsf:express:4.17.1:*:*:*:*:node.js:*:*",
+        "cpeNameId": "DE976235-8E97-4612-BF08-582399D42B6F",
+        "titles": [
+          {
+            "title": "OpenJS Foundation Express 4.17.1 for Node.js",
+            "lang": "en"
+          }
+        ]
+      }
+    }
+  ]
+}
