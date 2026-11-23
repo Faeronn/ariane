@@ -44,11 +44,13 @@ describe('OSV client', () => {
 		assert.equal(stub.requests.length, 3);
 	});
 
-	it('raises an OsvError once retries are exhausted, without retrying a 404', async () => {
+	it('raises an OsvError once retries are exhausted', async () => {
 		stub.failNext(503, 10);
 		await assert.rejects(client.queryBatch([EXPRESS]), OsvError);
-		stub.reset();
-		await assert.rejects(client.vuln('GHSA-none'), /OSV answered 404/);
+	});
+
+	it('answers false, without retrying, for a record OSV does not have', async () => {
+		assert.equal(await client.vuln('GHSA-none'), false);
 		assert.equal(stub.requests.length, 1);
 	});
 

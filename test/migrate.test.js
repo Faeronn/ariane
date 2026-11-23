@@ -47,7 +47,7 @@ describe('migrate', () => {
 	it('widens every vulnerability id column for OSV ids', async () => {
 		await run(MIGRATIONS_DIRECTORY);
 		const columns = await inspect("SELECT TABLE_NAME AS name, CHARACTER_MAXIMUM_LENGTH AS length FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'cveID' ORDER BY TABLE_NAME");
-		assert.deepEqual(columns.map(({ name, length }) => `${name}:${Number(length)}`), ['cpe_cve:50', 'cve:50', 'machine_cve_state:50', 'package_vuln:50']);
+		assert.deepEqual(columns.map(({ name, length }) => `${name}:${Number(length)}`), ['cpe_cve:50', 'cve:50', 'machine_cve_state:50', 'osv_alias:50', 'package_vuln:50']);
 	});
 
 	it('applies nothing on a second run', async () => {

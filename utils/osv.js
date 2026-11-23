@@ -17,23 +17,26 @@ const toQuery = ({ ecosystem, name, version }) => ({ package: { ecosystem, name 
 const sleep = milliseconds => new Promise(resolve => { setTimeout(resolve, milliseconds); });
 
 export function createOsvClient({ baseUrl = DEFAULT_BASE_URL, timeoutMs = 30_000, retries = 3, backoffMs = 2000 } = {}) {
-	async function request(method, path, body) {
+	// One HTTP exchange; a network failure or timeout becomes { error }.
+	function send(method, path, body) {
+		return fetch(`${baseUrl}${path}`, {
+			method,
+			headers: body ? { 'Content-Type': 'application/json' } : {},
+			body: body ? JSON.stringify(body) : undefined,
+			signal: AbortSignal.timeout(timeoutMs)
+		}).then(response => ({ response }), error => ({ error }));
+	}
+
+	// `missing`: what a 404 resolves to when the caller accepts an absent resource.
+	async function request(method, path, body, { missing } = {}) {
 		for (let attempt = 0; ; attempt += 1) {
-			let response;
-			try {
-				response = await fetch(`${baseUrl}${path}`, {
-					method,
-					headers: body ? { 'Content-Type': 'application/json' } : {},
-					body: body ? JSON.stringify(body) : undefined,
-					signal: AbortSignal.timeout(timeoutMs)
-				});
-			} catch (error) {
-				if (attempt >= retries) throw new OsvError(`OSV request failed: ${error.message}`, { cause: error });
-				await sleep(backoffMs * 2 ** attempt);
-				continue;
+			const { response, error } = await send(method, path, body);
+			if (response?.ok) return response.json();
+			if (response?.status === 404 && missing !== undefined) return missing;
+			const retryable = error || RETRYABLE(response.status);
+			if (!retryable || attempt >= retries) {
+				throw new OsvError(error ? `OSV request failed: ${error.message}` : `OSV answered ${response.status} for ${path}`, error ? { cause: error } : undefined);
 			}
-			if (response.ok) return response.json();
-			if (!RETRYABLE(response.status) || attempt >= retries) throw new OsvError(`OSV answered ${response.status} for ${path}`);
 			await sleep(backoffMs * 2 ** attempt);
 		}
 	}
@@ -65,8 +68,9 @@ export function createOsvClient({ baseUrl = DEFAULT_BASE_URL, timeoutMs = 30_000
 			}
 			return results;
 		},
-		// Full OSV record of one vulnerability (aliases, severity vectors, summary, dates).
-		vuln: id => request('GET', `/v1/vulns/${encodeURIComponent(id)}`)
+		// Full OSV record of one vulnerability (aliases, severity vectors, summary, dates); false when
+		// OSV no longer has it (a withdrawn or renamed advisory).
+		vuln: id => request('GET', `/v1/vulns/${encodeURIComponent(id)}`, undefined, { missing: false })
 	};
 }
 
