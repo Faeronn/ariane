@@ -1,0 +1,23 @@
+{
+  "resultsPerPage": 1,
+  "startIndex": 0,
+  "totalResults": 1,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-23T11:47:20.233",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:mariadb:mariadb:12.3.2:*:*:*:*:*:*:*",
+        "cpeNameId": "1A6F1B2B-F5BB-4202-A6B4-8445C7FD2BAC",
+        "titles": [
+          {
+            "title": "MariaDB 12.3.2",
+            "lang": "en"
+          }
+        ]
+      }
+    }
+  ]
+}

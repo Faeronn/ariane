@@ -1,0 +1,23 @@
+{
+  "resultsPerPage": 1,
+  "startIndex": 0,
+  "totalResults": 275,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-23T11:47:30.040",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:artifex:ghostscript:8_64:*:*:*:*:*:*:*",
+        "cpeNameId": "D947CAFF-5AF9-4B62-9159-EAFD31C1AC63",
+        "titles": [
+          {
+            "title": "Artifex Ghostscript 8 64",
+            "lang": "en"
+          }
+        ]
+      }
+    }
+  ]
+}

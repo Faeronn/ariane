@@ -1,0 +1,23 @@
+{
+  "resultsPerPage": 1,
+  "startIndex": 0,
+  "totalResults": 1,
+  "format": "NVD_CPE",
+  "version": "2.0",
+  "timestamp": "2026-11-23T11:47:24.247",
+  "products": [
+    {
+      "cpe": {
+        "deprecated": false,
+        "cpeName": "cpe:2.3:a:microsoft:.net:8.0.21:*:*:*:*:*:*:*",
+        "cpeNameId": "01809397-CAAE-4294-B375-FAEFF35BE04F",
+        "titles": [
+          {
+            "title": "Microsoft .NET 8.0.21",
+            "lang": "en"
+          }
+        ]
+      }
+    }
+  ]
+}

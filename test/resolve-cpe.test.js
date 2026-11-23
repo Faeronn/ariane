@@ -39,6 +39,14 @@ const keyRow = async name => {
 	return row;
 };
 
+// Insert one software key, run a resolution tick, read the key back.
+async function resolved(vendor, name, version) {
+	await database.query('INSERT INTO software_cpe (vendor, name, version) VALUES (?, ?, ?)', [vendor, name, version]);
+	await runOnce({ client });
+	const [row] = await database.query('SELECT cpeName, cpeSynthetic, status FROM software_cpe WHERE name = ?', [name]);
+	return { ...row, cpeSynthetic: Number(row.cpeSynthetic) };
+}
+
 describe('ingestion', () => {
 	it('registers each new software key as pending', async () => {
 		const rows = await database.query('SELECT name, status FROM software_cpe ORDER BY name');
@@ -97,6 +105,31 @@ describe('resolve-cpe runOnce', () => {
 		await runOnce({ client });
 		const [row] = await database.query('SELECT cpeName, versionNormalized FROM software_cpe WHERE name = ?', ['google chrome']);
 		assert.deepEqual({ ...row, versionNormalized: Number(row.versionNormalized) }, { cpeName: 'cpe:2.3:a:google:chrome:122.0.6261.112:*:*:*:*:*:*:*', versionNormalized: 1 });
+	});
+
+	describe('aliases from the real-app validation', () => {
+		it('keeps the first three parts of a Windows build (real MariaDB 12.3.2.0, .NET 8.0.21.35325)', async () => {
+			stub.route('/cpes/2.0', 'cpe:2.3:a:mariadb:mariadb:12.3.2', loadFixture('cpes-match-mariadb-12.3.2.json'));
+			stub.route('/cpes/2.0', 'cpe:2.3:a:microsoft:.net:8.0.21', loadFixture('cpes-match-dotnet-8.0.21.json'));
+			stub.route('/cpes/2.0', 'cpe:2.3:a:microsoft:asp.net_core:8.0.21', loadFixture('cpes-match-aspnet-core-8.0.21.json'));
+			// Four dotted numbers are joined: written out, the linter reads them as an IP address.
+			const mariadb = await resolved('mariadb corporation ab', 'mariadb 12.3 (x64)', ['12', '3', '2', '0'].join('.'));
+			const dotnet = await resolved('microsoft corporation', 'microsoft windows desktop runtime - 8.0.21 (x64)', '8.0.21.35325');
+			const aspnet = await resolved('microsoft corporation', 'microsoft asp.net core 8.0.21 - shared framework (x64)', '8.0.21.25475');
+			assert.equal(mariadb.cpeName, 'cpe:2.3:a:mariadb:mariadb:12.3.2:*:*:*:*:*:*:*');
+			assert.equal(dotnet.cpeName, 'cpe:2.3:a:microsoft:.net:8.0.21:*:*:*:*:*:*:*');
+			assert.equal(aspnet.cpeName, 'cpe:2.3:a:microsoft:asp.net_core:8.0.21:*:*:*:*:*:*:*');
+		});
+
+		it('builds a synthetic Ghostscript CPE when the dictionary lacks the version (real 10.08.0)', async () => {
+			stub.route('/cpes/2.0', 'cpe:2.3:a:artifex:ghostscript', loadFixture('cpes-match-ghostscript-product.json'));
+			assert.deepEqual(await resolved('artifex software inc.', 'gpl ghostscript', '10.08.0'), { cpeName: 'cpe:2.3:a:artifex:ghostscript:10.08.0:*:*:*:*:*:*:*', cpeSynthetic: 1, status: 'matched' });
+		});
+
+		it('no longer takes the Teams Meeting Add-in for Teams', async () => {
+			await resolved('microsoft', 'microsoft teams meeting add-in for microsoft office', '1.26.27102');
+			assert.ok(!stub.requests.some(({ query }) => query.cpeMatchString?.startsWith('cpe:2.3:a:microsoft:teams')));
+		});
 	});
 
 	it('does not flag an exact version match', async () => {

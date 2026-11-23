@@ -49,10 +49,16 @@ export function pickCpe(software, products) {
 
 // Most specific alias whose patterns match the lowercased name (and vendor when the alias has one).
 async function findAlias({ name, vendor }) {
-	const [alias] = await database.query(`SELECT cpePart, cpeVendor, cpeProduct FROM software_alias
+	const [alias] = await database.query(`SELECT cpePart, cpeVendor, cpeProduct, versionParts FROM software_alias
 		WHERE ? LIKE namePattern AND (vendorPattern IS NULL OR ? LIKE vendorPattern)
 		ORDER BY CHAR_LENGTH(namePattern) DESC, vendorPattern IS NULL LIMIT 1`, [name, vendor]);
 	return alias;
+}
+
+// First `parts` dot-separated parts of a version (Windows build `8.0.21.35325`, 3 => `8.0.21`);
+// all of it when `parts` is not set.
+export function keepVersionParts(version, parts) {
+	return parts ? version.split('.').slice(0, parts).join('.') : version;
 }
 
 // Versions safe to place unescaped in a CPE 2.3 formatted string.
@@ -63,11 +69,12 @@ const SYNTHETIC_VERSION = /^[\w.-]+$/;
 // unless `allowSynthetic` is false.
 async function resolveByAlias(client, software, alias, { allowSynthetic }) {
 	const product = `cpe:2.3:${alias.cpePart}:${alias.cpeVendor}:${alias.cpeProduct}`;
-	const products = await client.searchCpesByMatchString(`${product}:${software.version}`);
-	const cpeName = pickCpe({ name: alias.cpeProduct, vendor: alias.cpeVendor, version: software.version }, products);
+	const version = keepVersionParts(software.version, alias.versionParts);
+	const products = await client.searchCpesByMatchString(`${product}:${version}`);
+	const cpeName = pickCpe({ name: alias.cpeProduct, vendor: alias.cpeVendor, version }, products);
 	if (cpeName) return { cpeName, synthetic: false };
-	if (!allowSynthetic || !SYNTHETIC_VERSION.test(software.version) || !(await client.cpeExists(product))) return {};
-	return { cpeName: `${product}:${software.version}:*:*:*:*:*:*:*`, synthetic: true };
+	if (!allowSynthetic || !SYNTHETIC_VERSION.test(version) || !(await client.cpeExists(product))) return {};
+	return { cpeName: `${product}:${version}:*:*:*:*:*:*:*`, synthetic: true };
 }
 
 // Try each product candidate of the display name ("Mozilla Firefox (x64 fr)" => firefox, ...)
