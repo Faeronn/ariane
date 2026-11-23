@@ -8,8 +8,10 @@ const tokenize = version => version.toLowerCase().match(/\d+|[a-z]+/g) ?? [];
 // Full words only: a single letter is an openssl patch release (1.1.1a), not a pre-release.
 const isPreRelease = token => /^(?:alpha|beta|dev|pre|preview|rc)$/.test(token);
 
-// Order of two tokens at the same position; `undefined` means that version has ended.
+// Order of two tokens at the same position; `undefined` means that version has ended. An ended
+// version equals a trailing zero part (Windows `12.3.2.0` is NVD's `12.3.2`).
 function compareTokens(a, b) {
+	if ((a === undefined && b === '0') || (a === '0' && b === undefined)) return 0;
 	if (a === undefined) return isPreRelease(b) ? 1 : -1;
 	if (b === undefined || isPreRelease(a) !== isPreRelease(b)) return isPreRelease(a) ? -1 : 1;
 	const bothNumeric = /^\d/.test(a) && /^\d/.test(b);

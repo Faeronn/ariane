@@ -32,6 +32,18 @@ describe('compareVersions', () => {
 	it('finds equal versions equal', () => {
 		assert.equal(compareVersions('3.0.0', '3.0.0'), 0);
 	});
+
+	it('ignores trailing zero parts of Windows versions', () => {
+		// Four dotted numbers are joined: written out, the linter reads them as an IP address.
+		assert.equal(compareVersions(['10', '11', '2', '0'].join('.'), '10.11.2'), 0);
+		assert.equal(compareVersions('1.1.1', '1.1.1.0.0'), 0);
+		assert.ok(cpeMatchCovers({ vulnerable: true, criteria: 'cpe:2.3:a:mariadb:mariadb:*:*:*:*:*:*:*:*', versionEndIncluding: '12.3.2' }, 'cpe:2.3:a:mariadb:mariadb:12.3.2.0:*:*:*:*:*:*:*'));
+	});
+
+	it('still orders a non-zero extra part after its prefix', () => {
+		assert.ok(compareVersions(['10', '11', '2', '1'].join('.'), '10.11.2') > 0);
+		assert.ok(compareVersions('7.1.2-30', '7.1.2-0') > 0);
+	});
 });
 
 describe('cpeMatchCovers', () => {
