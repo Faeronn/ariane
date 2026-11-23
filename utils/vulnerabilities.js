@@ -22,7 +22,8 @@ function programRows(machineID) {
 		WHERE s.snapshotID = (${LATEST_SNAPSHOT_OF})`, [machineID]);
 }
 
-// Dependencies of the applications in scope: direct ones through their CPE (NVD), all through OSV.
+// Dependencies of the applications in scope: direct ones through their CPE (NVD), all through the
+// package advisories (OSV, and Packagist for Composer), each link with its source.
 function dependencyRows(scope, id) {
 	if (!SCOPES.has(scope)) throw new Error(`Unknown scope ${scope}`);
 	const nvd = database.query(`SELECT ${CVE_COLUMNS}, ${DEPENDENCY_COLUMNS}, cc.platforms
@@ -31,12 +32,12 @@ function dependencyRows(scope, id) {
 		INNER JOIN cpe_cve cc ON cc.cpeName = sc.cpeName
 		INNER JOIN cve c ON c.cveID = cc.cveID
 		WHERE a.${scope} = ?`, [id]);
-	const osv = database.query(`SELECT ${CVE_COLUMNS}, ${DEPENDENCY_COLUMNS}
+	const advisories = database.query(`SELECT ${CVE_COLUMNS}, ${DEPENDENCY_COLUMNS}, pv.source
 		${LATEST_DEPENDENCIES}
 		INNER JOIN package_vuln pv ON pv.ecosystem = d.ecosystem AND pv.name = d.name AND pv.version = d.version
 		INNER JOIN cve c ON c.cveID = pv.cveID
 		WHERE a.${scope} = ?`, [id]);
-	return Promise.all([nvd, osv]);
+	return Promise.all([nvd, advisories]);
 }
 
 const byScore = (left, right) => (right.cvssScore ?? -1) - (left.cvssScore ?? -1) || left.cveID.localeCompare(right.cveID);
@@ -47,7 +48,7 @@ const bySoftware = (left, right) => softwareOrder(left).localeCompare(softwareOr
 // matched on its upstream version only (a distribution backport may fix it), one exact match
 // confirms it. platformDependent: every link needs a platform the machine may or may not run;
 // links whose platforms are all known OS families other than the machine's are dropped.
-// sources: nvd (CPE) and/or osv (package advisories).
+// sources: nvd (CPE), osv and packagist (package advisories).
 function merge(osFamily, findings) {
 	const vulnerabilities = new Map();
 	for (const { row, source, software, versionNormalized } of findings) {
@@ -68,9 +69,9 @@ function merge(osFamily, findings) {
 }
 
 const dependency = row => ({ name: row.name, version: row.version, ecosystem: row.ecosystem, application: row.application });
-const dependencyFindings = ([nvd, osv]) => [
+const dependencyFindings = ([nvd, advisories]) => [
 	...nvd.map(row => ({ row, source: 'nvd', software: dependency(row), versionNormalized: false })),
-	...osv.map(row => ({ row, source: 'osv', software: dependency(row), versionNormalized: false }))
+	...advisories.map(row => ({ row, source: row.source, software: dependency(row), versionNormalized: false }))
 ];
 
 // Vulnerabilities of a machine: its installed programs and the dependencies of its applications,

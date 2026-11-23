@@ -165,7 +165,7 @@ Réponse de `GET /machines/:id/vulns` (triée par score CVSS décroissant, une e
 ```
 `unmappedSoftware` compte les logiciels du dernier snapshot sans CPE (pas encore résolus ou introuvables dans le NVD).
 
-Les vulnérabilités d’une machine incluent celles des dépendances de ses applications (dernier snapshot de chaque application). Deux sources se croisent : le NVD (par CPE, pour les logiciels installés et les dépendances directes) et OSV (pour toutes les dépendances). Une vulnérabilité trouvée par les deux n’apparaît qu’une fois ; `sources` dit qui l’a trouvée (`nvd`, `osv`). Une dépendance est listée avec son application et son écosystème : `{ "name": "express", "version": "4.17.1", "ecosystem": "npm", "application": "gesdoc2" }`. Une alerte sans CVE garde son identifiant OSV (`GHSA-…`, `PYSEC-…`).
+Les vulnérabilités d’une machine incluent celles des dépendances de ses applications (dernier snapshot de chaque application). Trois sources se croisent : le NVD (par CPE, pour les logiciels installés et les dépendances directes), OSV (pour toutes les dépendances) et Packagist (avis de sécurité des paquets Composer, ceux que lit `composer audit`). Une vulnérabilité trouvée par plusieurs n’apparaît qu’une fois ; `sources` dit qui l’a trouvée (`nvd`, `osv`, `packagist`). Une dépendance est listée avec son application et son écosystème : `{ "name": "express", "version": "4.17.1", "ecosystem": "npm", "application": "gesdoc2" }`. Un avis sans CVE garde son identifiant d’origine (`GHSA-…`, `PYSEC-…`, `PKSA-…`).
 
 Chaque nuit, les snapshots plus anciens que `SNAPSHOT_RETENTION_DAYS` (90 jours par défaut) sont supprimés, sauf le dernier de chaque machine ; les logiciels, liens CPE et CVE que plus aucune machine n’utilise le sont aussi.
 

@@ -152,3 +152,17 @@ describe('detect-alerts with application dependencies', () => {
 		assert.equal(summary.deferred, 1);
 	});
 });
+
+describe('detect-alerts with Composer packages', () => {
+	it('defers the baseline until Packagist has checked a Composer package', async () => {
+		await database.query("INSERT INTO applications (applicationID, orgID, machineID, name, createdAt, lastSeenAt) VALUES (1, ?, 1, 'php-app', UTC_TIMESTAMP(), UTC_TIMESTAMP())", [TEST_ORG_ID]);
+		await database.query('INSERT INTO application_snapshot (snapshotID, applicationID, receivedAt) VALUES (1, 1, UTC_TIMESTAMP())');
+		await database.query("INSERT INTO application_dependency (snapshotID, ecosystem, name, version) VALUES (1, 'Packagist', 'symfony/mime', '7.4.19')");
+		await database.query("INSERT INTO package_vuln_key (ecosystem, name, version, status) VALUES ('Packagist', 'symfony/mime', '7.4.19', 'checked')");
+		const waiting = await runOnce();
+		assert.equal(waiting.deferred, 1);
+		await database.query('UPDATE package_vuln_key SET packagistCheckedAt = UTC_TIMESTAMP()');
+		const ready = await runOnce();
+		assert.equal(ready.deferred, 0);
+	});
+});

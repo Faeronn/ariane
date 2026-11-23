@@ -51,7 +51,7 @@ const LATEST_DEPENDENCIES = `FROM applications a
 	INNER JOIN application_dependency d ON d.snapshotID = s.snapshotID`;
 
 // Software of the machine's latest snapshot still waiting for its CPE or for that CPE's CVEs, and
-// dependencies of its applications still waiting for OSV or (direct ones) for the NVD.
+// dependencies of its applications still waiting for OSV, Packagist (Composer) or (direct ones) the NVD.
 async function countUnresolved(machineID) {
 	const [{ unresolved }] = await database.query(`SELECT
 		(SELECT COUNT(*) FROM installed_software s
@@ -59,7 +59,7 @@ async function countUnresolved(machineID) {
 			WHERE s.snapshotID = (SELECT MAX(snapshotID) FROM inventory_snapshot WHERE machineID = ?) AND ${UNSYNCED_KEY})
 		+ (SELECT COUNT(*) ${LATEST_DEPENDENCIES}
 			INNER JOIN package_vuln_key k ON k.ecosystem = d.ecosystem AND k.name = d.name AND k.version = d.version
-			WHERE a.machineID = ? AND k.status = 'pending')
+			WHERE a.machineID = ? AND (k.status = 'pending' OR (k.ecosystem = 'Packagist' AND k.packagistCheckedAt IS NULL)))
 		+ (SELECT COUNT(*) ${LATEST_DEPENDENCIES}
 			INNER JOIN software_cpe sc ON d.direct = 1 AND sc.ecosystem = d.ecosystem AND sc.packageName = d.name AND sc.version = d.version
 			WHERE a.machineID = ? AND ${UNSYNCED_KEY}) AS unresolved`, [machineID, machineID, machineID]);

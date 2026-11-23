@@ -83,6 +83,16 @@ describe('machineVulnerabilities with application dependencies', () => {
 		assert.deepEqual(express.software, [{ name: 'express', version: '4.17.1', ecosystem: 'npm', application: 'shop' }]);
 	});
 
+	it('names Packagist as a source next to OSV for a Composer finding', async () => {
+		await database.query("INSERT INTO application_dependency (snapshotID, ecosystem, name, version, direct, dev) VALUES (2, 'Packagist', 'symfony/mime', '7.4.19', 1, 0)");
+		await database.query("INSERT INTO cve (cveID, severity, source) VALUES ('CVE-2026-45070', 'MEDIUM', 'packagist'), ('PKSA-wtxr-p26d-nn42', 'HIGH', 'packagist')");
+		await database.query("INSERT INTO package_vuln (ecosystem, name, version, cveID, source) VALUES ('Packagist', 'symfony/mime', '7.4.19', 'CVE-2026-45070', 'osv'), ('Packagist', 'symfony/mime', '7.4.19', 'CVE-2026-45070', 'packagist'), ('Packagist', 'symfony/mime', '7.4.19', 'PKSA-wtxr-p26d-nn42', 'packagist')");
+		const vulnerabilities = await machineVulnerabilities(machineID);
+		assert.deepEqual(entry(vulnerabilities, 'CVE-2026-45070').sources, ['osv', 'packagist']);
+		assert.deepEqual(entry(vulnerabilities, 'PKSA-wtxr-p26d-nn42').sources, ['packagist']);
+		assert.equal(entry(vulnerabilities, 'CVE-2026-45070').software.length, 1);
+	});
+
 	it('reads only the latest snapshot of each application', async () => {
 		const vulnerabilities = await machineVulnerabilities(machineID);
 		assert.equal(entry(vulnerabilities, 'CVE-2021-0001'), undefined);

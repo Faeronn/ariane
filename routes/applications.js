@@ -56,7 +56,7 @@ router.get('/:id', async (request, response) => {
 });
 
 // Vulnerabilities of the latest dependencies, highest CVSS first; `unscanned`: packages still
-// waiting for their OSV check.
+// waiting for their OSV check (or Packagist's, for Composer).
 router.get('/:id/vulns', async (request, response) => {
 	try {
 		const { invalid, application } = await findApplication(request);
@@ -67,7 +67,7 @@ router.get('/:id/vulns', async (request, response) => {
 			applicationVulnerabilities(application.applicationID),
 			database.query(`SELECT COUNT(*) AS unscanned FROM application_dependency d
 				INNER JOIN package_vuln_key k ON k.ecosystem = d.ecosystem AND k.name = d.name AND k.version = d.version
-				WHERE d.snapshotID = ? AND k.status = 'pending'`, [application.snapshotID])
+				WHERE d.snapshotID = ? AND (k.status = 'pending' OR (k.ecosystem = 'Packagist' AND k.packagistCheckedAt IS NULL))`, [application.snapshotID])
 		]);
 		return response.status(200).send({ message: 'Vulnerabilities retrieved.', vulnerabilities, unscanned: Number(unscanned) });
 	} catch (error) {

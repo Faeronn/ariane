@@ -56,5 +56,7 @@ describe('buildAlertDigest', () => {
 		const { html } = buildAlertDigest(['admin@ariane.test'], { organization: 'Test', total: 2, shown: 2, machines: [{ hostname: 'web-01', vulnerabilities: [vulnerability('CVE-2024-29041'), vulnerability('GHSA-6rw7-vpxm-498p')] }] });
 		assert.ok(html.includes('https://nvd.nist.gov/vuln/detail/CVE-2024-29041'));
 		assert.ok(html.includes('https://osv.dev/vulnerability/GHSA-6rw7-vpxm-498p'));
+		const packagist = buildAlertDigest(['admin@ariane.test'], { organization: 'Test', total: 1, shown: 1, machines: [{ hostname: 'web-01', vulnerabilities: [vulnerability('PKSA-wtxr-p26d-nn42')] }] });
+		assert.ok(packagist.html.includes('https://packagist.org/security-advisories/PKSA-wtxr-p26d-nn42'));
 	});
 });
