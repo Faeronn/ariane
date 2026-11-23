@@ -2,14 +2,17 @@
 
 const LINUX_VENDORS = new Set(['debian', 'canonical', 'redhat', 'fedoraproject', 'suse', 'opensuse', 'centos', 'rockylinux', 'almalinux']);
 const MACOS_PRODUCTS = new Set(['mac_os_x', 'macos', 'mac_os']);
+const IOS_PRODUCTS = new Set(['iphone_os', 'ipados']);
 
 function familyOf(vendor, product) {
 	if (vendor === 'microsoft' && product.startsWith('windows')) return 'windows';
 	if ((vendor === 'linux' && product === 'linux_kernel') || LINUX_VENDORS.has(vendor) || (vendor === 'oracle' && product === 'linux')) return 'linux';
 	if (vendor === 'apple' && MACOS_PRODUCTS.has(product)) return 'macos';
+	if (vendor === 'apple' && IOS_PRODUCTS.has(product)) return 'ios';
+	if (vendor === 'google' && product === 'android') return 'android';
 }
 
-// 'windows' | 'linux' | 'macos' | undefined (application, hardware or unknown OS).
+// 'windows' | 'linux' | 'macos' | 'ios' | 'android' | undefined (application, hardware or unknown OS).
 export function osFamilyOfCriteria(criteria) {
 	const fields = String(criteria).split(':');
 	if (fields[2] !== 'o') return;

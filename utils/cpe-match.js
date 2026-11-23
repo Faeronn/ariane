@@ -58,24 +58,51 @@ export function cpeMatchCovers(match, cpeName) {
 }
 
 const MAX_PLATFORMS = 20;
+const TARGET_SW_FIELD = 10;
 
-const nodeCovers = (node, cpeName) => (node.cpeMatch ?? []).some(match => cpeMatchCovers(match, cpeName));
+// target_sw values naming an operating system, as the OS criteria platform.js classifies.
+const TARGET_OS_CRITERIA = new Map([
+	['windows', 'cpe:2.3:o:microsoft:windows:-:*:*:*:*:*:*:*'],
+	['linux', 'cpe:2.3:o:linux:linux_kernel:-:*:*:*:*:*:*:*'],
+	['macos', 'cpe:2.3:o:apple:macos:-:*:*:*:*:*:*:*'],
+	['mac_os_x', 'cpe:2.3:o:apple:macos:-:*:*:*:*:*:*:*'],
+	['mac_os', 'cpe:2.3:o:apple:macos:-:*:*:*:*:*:*:*'],
+	['iphone_os', 'cpe:2.3:o:apple:iphone_os:-:*:*:*:*:*:*:*'],
+	['ios', 'cpe:2.3:o:apple:iphone_os:-:*:*:*:*:*:*:*'],
+	['ipados', 'cpe:2.3:o:apple:iphone_os:-:*:*:*:*:*:*:*'],
+	['android', 'cpe:2.3:o:google:android:-:*:*:*:*:*:*:*']
+]);
+
+const coveringMatches = (node, cpeName) => (node.cpeMatch ?? []).filter(match => cpeMatchCovers(match, cpeName));
+
+// The OS a vulnerable criterion is limited to through its target_sw field, as an OS criteria;
+// undefined when it is not limited to a known OS (`*`, `-`, `node.js`...).
+const targetOsCriteria = match => TARGET_OS_CRITERIA.get(match.criteria.split(':')[TARGET_SW_FIELD]);
 
 // Under which platforms does the CVE apply to `cpeName`? undefined: it does not (no vulnerable
 // match covers the CPE; NVD's cpeName filter also returns CVEs where the CPE is only a
-// non-vulnerable platform). { platforms: [] }: whatever the platform. Otherwise the platform
-// criteria of the AND configurations that cover it ("vulnerable when running on Windows").
+// non-vulnerable platform). { platforms: [] }: whatever the platform. Otherwise the platforms that
+// make it apply: the OS named by the covering criteria's own target_sw ("Teams for iPhone") when
+// every covering criteria names one, else the platform criteria of the AND configurations
+// ("vulnerable when running on Windows").
 export function cveConditionsForCpe(cve, cpeName) {
 	const platforms = new Set();
 	let covered = false;
 
 	for (const configuration of cve.configurations ?? []) {
 		const nodes = configuration.nodes ?? [];
-		if (!nodes.some(node => nodeCovers(node, cpeName))) continue;
+		const covering = nodes.flatMap(node => coveringMatches(node, cpeName));
+		if (covering.length === 0) continue;
 		covered = true;
 
+		const targets = covering.map(match => targetOsCriteria(match));
+		if (targets.every(Boolean)) {
+			for (const criteria of targets) platforms.add(criteria);
+			continue;
+		}
+
 		const required = configuration.operator === 'AND'
-			? nodes.filter(node => !nodeCovers(node, cpeName)).flatMap(node => (node.cpeMatch ?? []).filter(match => match.vulnerable === false).map(match => match.criteria))
+			? nodes.filter(node => coveringMatches(node, cpeName).length === 0).flatMap(node => (node.cpeMatch ?? []).filter(match => match.vulnerable === false).map(match => match.criteria))
 			: [];
 		if (required.length === 0) return { platforms: [] }; // one unconditional configuration wins
 		for (const criteria of required) platforms.add(criteria);

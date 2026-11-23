@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { api, createSignedInUser } from './helpers/fixtures.js';
 import { startServer } from './helpers/server.js';
 import { reset } from './helpers/database.js';
-import { osFamilyOfCriteria } from '../utils/platform.js';
+import { osFamilyOfCriteria, platformsMayApply } from '../utils/platform.js';
 import database from '../utils/database.js';
 
 describe('osFamilyOfCriteria', () => {
@@ -15,6 +15,9 @@ describe('osFamilyOfCriteria', () => {
 		['cpe:2.3:o:canonical:ubuntu_linux:22.04:*:*:*:lts:*:*:*', 'linux'],
 		['cpe:2.3:o:redhat:enterprise_linux:9.0:*:*:*:*:*:*:*', 'linux'],
 		['cpe:2.3:o:apple:macos:*:*:*:*:*:*:*:*', 'macos'],
+		['cpe:2.3:o:apple:iphone_os:-:*:*:*:*:*:*:*', 'ios'],
+		['cpe:2.3:o:apple:ipados:-:*:*:*:*:*:*:*', 'ios'],
+		['cpe:2.3:o:google:android:-:*:*:*:*:*:*:*', 'android'],
 		['cpe:2.3:h:netapp:a250:-:*:*:*:*:*:*:*', undefined],
 		['cpe:2.3:a:gnu:gnutls:*:*:*:*:*:*:*:*', undefined],
 		['cpe:2.3:o:netapp:a250_firmware:-:*:*:*:*:*:*:*', undefined]
@@ -22,6 +25,21 @@ describe('osFamilyOfCriteria', () => {
 	for (const [criteria, family] of CASES) {
 		it(`${criteria} => ${family}`, () => assert.equal(osFamilyOfCriteria(criteria), family));
 	}
+});
+
+describe('platformsMayApply', () => {
+	const IPHONE = 'cpe:2.3:o:apple:iphone_os:-:*:*:*:*:*:*:*';
+	const ANDROID = 'cpe:2.3:o:google:android:-:*:*:*:*:*:*:*';
+
+	it('never applies an iOS or Android only CVE to a Windows or Linux machine', () => {
+		assert.equal(platformsMayApply([IPHONE], 'windows'), false);
+		assert.equal(platformsMayApply([IPHONE, ANDROID], 'linux'), false);
+	});
+
+	it('applies it when one of its platforms is the machine OS or the OS is unknown', () => {
+		assert.equal(platformsMayApply([IPHONE, 'cpe:2.3:o:microsoft:windows:-:*:*:*:*:*:*:*'], 'windows'), true);
+		assert.equal(platformsMayApply([IPHONE]), true);
+	});
 });
 
 describe('platform conditions in machine vulnerabilities', () => {

@@ -113,3 +113,30 @@ describe('cveConditionsForCpe', () => {
 		assert.equal(cveConditionsForCpe(real('CVE-2009-1390'), OPENSSL), undefined);
 	});
 });
+
+const teamsRange = (targetSw, versionEndExcluding) => ({ vulnerable: true, criteria: `cpe:2.3:a:microsoft:teams:*:*:*:*:*:${targetSw}:*:*`, versionEndExcluding });
+const single = matches => ({ configurations: [{ nodes: [{ operator: 'OR', cpeMatch: matches }] }] });
+
+describe('cveConditionsForCpe with a target_sw OS', () => {
+	const teams = loadFixture('cve-2023-29328.json').vulnerabilities[0].cve;
+	const IPHONE = 'cpe:2.3:o:apple:iphone_os:-:*:*:*:*:*:*:*';
+
+	it('limits a CPE covered only by an iphone_os range to iOS (real CVE-2023-29328)', () => {
+		// 1.26 is above the Windows (< 1.6.00.18681) and Android ranges, below the iOS one (< 5.12.1).
+		assert.deepEqual(cveConditionsForCpe(teams, 'cpe:2.3:a:microsoft:teams:1.26.27102:*:*:*:*:*:*:*'), { platforms: [IPHONE] });
+	});
+
+	it('keeps an unrestricted target_sw (- or *) unconditional', () => {
+		assert.deepEqual(cveConditionsForCpe(teams, 'cpe:2.3:a:microsoft:teams:1.5.0:*:*:*:*:*:*:*'), { platforms: [] });
+		assert.deepEqual(cveConditionsForCpe(single([teamsRange('*', '2.0')]), 'cpe:2.3:a:microsoft:teams:1.0:*:*:*:*:*:*:*'), { platforms: [] });
+	});
+
+	it('lists every targeted OS when several covering ranges name one', () => {
+		const conditions = cveConditionsForCpe(single([teamsRange('windows', '2.0'), teamsRange('iphone_os', '2.0')]), 'cpe:2.3:a:microsoft:teams:1.0:*:*:*:*:*:*:*');
+		assert.deepEqual(conditions.platforms.toSorted(), [IPHONE, 'cpe:2.3:o:microsoft:windows:-:*:*:*:*:*:*:*'].toSorted());
+	});
+
+	it('treats a target_sw that is not an OS as unrestricted', () => {
+		assert.deepEqual(cveConditionsForCpe(single([teamsRange('node.js', '2.0')]), 'cpe:2.3:a:microsoft:teams:1.0:*:*:*:*:*:*:*'), { platforms: [] });
+	});
+});

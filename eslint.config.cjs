@@ -4,6 +4,8 @@ const unicorn = require("eslint-plugin-unicorn").default ?? require("eslint-plug
 const sonarjs = require("eslint-plugin-sonarjs").default ?? require("eslint-plugin-sonarjs");
 
 module.exports = [
+	// Project docs and plans, including throwaway validation scripts, are not application code.
+	{ ignores: ["aidd_docs/**"] },
 	unicorn.configs.recommended,
   	sonarjs.configs.recommended,
   	js.configs.recommended,
