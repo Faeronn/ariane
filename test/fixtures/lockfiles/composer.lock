@@ -1,0 +1,101 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "8b48779ee9062225f6fc714ebc462fd4",
+    "packages": [
+        {
+            "name": "doctrine/dbal",
+            "version": "4.5.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/doctrine/dbal.git",
+                "reference": "c435cd7ea33e17d2a89288caf994cf3d4549b879"
+            },
+            "type": "library",
+            "license": [
+                "MIT"
+            ]
+        },
+        {
+            "name": "doctrine/orm",
+            "version": "3.7.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/doctrine/orm.git",
+                "reference": "00c2fd70da291cca1ec75f4dae5344fe3df588fa"
+            },
+            "type": "library",
+            "license": [
+                "MIT"
+            ]
+        },
+        {
+            "name": "symfony/http-kernel",
+            "version": "v7.4.21",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/http-kernel.git",
+                "reference": "4779fce7dedacb8801b2b61c703ef99159502331"
+            },
+            "type": "library",
+            "license": [
+                "MIT"
+            ]
+        },
+        {
+            "name": "twig/twig",
+            "version": "v3.30.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/twigphp/Twig.git",
+                "reference": "8c737079b726af72ff8ef3c595be9f6a810ea1ef"
+            },
+            "type": "library",
+            "license": [
+                "BSD-3-Clause"
+            ]
+        }
+    ],
+    "packages-dev": [
+        {
+            "name": "phpunit/phpunit",
+            "version": "11.5.57",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sebastianbergmann/phpunit.git",
+                "reference": "36b75bf56a8535623f5b3e24b27ea1823759da1a"
+            },
+            "type": "library",
+            "license": [
+                "BSD-3-Clause"
+            ]
+        },
+        {
+            "name": "symfony/web-profiler-bundle",
+            "version": "v7.4.21",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/web-profiler-bundle.git",
+                "reference": "ab1977d0d3e43f8f748a5fe4bea8c79959cd835e"
+            },
+            "type": "symfony-bundle",
+            "license": [
+                "MIT"
+            ]
+        }
+    ],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "prefer-lowest": false,
+    "platform": {
+        "php": "^8.4",
+        "ext-ctype": "*",
+        "ext-iconv": "*"
+    },
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

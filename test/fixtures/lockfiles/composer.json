@@ -1,0 +1,14 @@
+{
+    "name": "vertuoz/arg-doc",
+    "type": "project",
+    "require": {
+        "php": "^8.4",
+        "ext-ctype": "*",
+        "doctrine/orm": "^3.3",
+        "twig/twig": "^3.14"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "symfony/web-profiler-bundle": "7.4.*"
+    }
+}
