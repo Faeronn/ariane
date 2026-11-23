@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import logger from './logger.js';
-import { vulnerabilityLink } from './vulnerability-link.js';
+import { renderEmail } from './notification-email.js';
 
 // SMTP options: implicit TLS when MAIL_SECURE=true (port 465), otherwise STARTTLS is required, so
 // credentials and codes never travel in clear text. OAuth is not supported.
@@ -56,38 +56,12 @@ async function sendVerificationEmail(to, verificationCode) {
 	}
 }
 
-const escapeHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-
-// A program as `name version`, a dependency with its application: `express 4.17.1 (gesdoc2)`.
-const affectedSoftware = ({ name, version, application }) => (application ? `${name} ${version} (${application})` : `${name} ${version}`);
-
-function vulnerabilityLine({ cveID, severity, cvssScore, software, versionNormalized, platformDependent }) {
-	const link = vulnerabilityLink(cveID);
-	const score = cvssScore === undefined ? 'score en attente' : `${severity} ${cvssScore}`;
-	const affected = software.map(item => affectedSoftware(item)).join(', ');
-	const toVerify = versionNormalized || platformDependent ? ' <em>(à vérifier : correctif de distribution ou plateforme possible)</em>' : '';
-	return `<li><a href="${escapeHtml(link)}">${escapeHtml(cveID)}</a> (${escapeHtml(score)}) : ${escapeHtml(affected)}${toVerify}</li>`;
-}
-
-// digest: { organization, total, shown, machines: [{ hostname, vulnerabilities: [...] }] }
-export function buildAlertDigest(to, digest) {
-	const machines = digest.machines.map(({ hostname, vulnerabilities }) => `<h3>${escapeHtml(hostname)}</h3><ul>${vulnerabilities.map(vulnerability => vulnerabilityLine(vulnerability)).join('')}</ul>`).join('');
-	const more = digest.total > digest.shown ? `<p>${digest.total - digest.shown} autre(s) : voir GET /machines/:id/vulns.</p>` : '';
-	return {
-		from: senderAddress(),
-		to,
-		subject: `[Ariane] ${digest.total} nouvelle(s) vulnérabilité(s) - ${digest.organization}`,
-		html: `<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
-			<p>Nouvelles vulnérabilités détectées sur les machines de ${escapeHtml(digest.organization)} :</p>
-			${machines}${more}
-		</div>`
-	};
-}
-
-// Throws on failure: the caller keeps the alerts unsent and retries on its next tick.
-export async function sendAlertDigest(to, digest) {
-	const info = await transporter.sendMail(buildAlertDigest(to, digest));
-	logger.info({ messageId: info.messageId, recipients: to.length }, 'Alert digest sent');
+// One item notification to the admins. Throws on failure: the caller keeps the item's alerts unsent
+// and retries on its next tick.
+export async function sendItemNotification(to, notification) {
+	const { subject, html, text } = renderEmail(notification);
+	const info = await transporter.sendMail({ from: senderAddress(), to, subject, html, text });
+	logger.info({ messageId: info.messageId, recipients: to.length, item: `${notification.item.kind}:${notification.item.name}` }, 'Alert notification sent');
 	return info;
 }
 

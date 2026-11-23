@@ -1,22 +1,21 @@
 import database from '../utils/database.js';
 import { withJobLock } from '../utils/job-lock.js';
 import { programVulnerabilities, applicationVulnerabilities } from '../utils/vulnerabilities.js';
-import { sendAlertDigest } from '../utils/mailer.js';
-import { formatDigest, postWebhook } from '../utils/webhook.js';
+import { buildItemNotification } from '../utils/notification.js';
+import { sendItemNotification } from '../utils/mailer.js';
+import { renderChat, postWebhook } from '../utils/webhook.js';
 import baseLogger from '../utils/logger.js';
 
 const SEVERITY_RANK = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
-const MAX_DIGEST_ENTRIES = 100;
 const logger = baseLogger.child({ job: 'send-alerts' });
 
-// A CVE NVD has not scored yet is always reported: unknown is not low.
+// A CVE nobody has scored yet is always reported: unknown is not low.
 const meetsThreshold = (severity, minSeverity) => !SEVERITY_RANK[severity] || SEVERITY_RANK[severity] >= SEVERITY_RANK[minSeverity];
 
 // Open CVE states of the organization's items (machines and applications of active machines) not
-// yet delivered on `column`'s channel, with a label for each item.
+// yet delivered on `column`'s channel.
 function unsentRows(orgID, column) {
-	return database.query(`SELECT st.itemType, st.itemID, st.cveID, c.severity,
-			IF(st.itemType = 'machine', m.hostname, CONCAT(a.name, ' (', host.hostname, ')')) AS label
+	return database.query(`SELECT st.itemType, st.itemID, st.cveID, c.severity
 		FROM item_cve_state st
 		LEFT JOIN machines m ON st.itemType = 'machine' AND m.machineID = st.itemID
 		LEFT JOIN applications a ON st.itemType = 'application' AND a.applicationID = st.itemID
@@ -30,61 +29,65 @@ async function markSent(rows, column) {
 	if (rows.length > 0) await database.batch(`UPDATE item_cve_state SET ${column} = UTC_TIMESTAMP() WHERE itemType = ? AND itemID = ? AND cveID = ?`, rows.map(({ itemType, itemID, cveID }) => [itemType, itemID, cveID]));
 }
 
-const itemVulnerabilities = (itemType, itemID) => (itemType === 'machine' ? programVulnerabilities(itemID) : applicationVulnerabilities(itemID));
-
-// { organization, total, shown, machines: [{ hostname, vulnerabilities }] } from the rows, with the
-// current details (score, software, flags) of each CVE; at most MAX_DIGEST_ENTRIES shown.
-async function buildDigest(organization, rows) {
-	const byItem = Map.groupBy(rows, ({ itemType, itemID }) => `${itemType}:${itemID}`);
-	const machines = [];
-	let total = 0;
-	let shown = 0;
-	for (const machineRows of byItem.values()) {
-		const wanted = new Set(machineRows.map(({ cveID }) => cveID));
-		const all = await itemVulnerabilities(machineRows[0].itemType, machineRows[0].itemID);
-		const vulnerabilities = all.filter(({ cveID }) => wanted.has(cveID));
-		total += vulnerabilities.length;
-		const kept = vulnerabilities.slice(0, Math.max(0, MAX_DIGEST_ENTRIES - shown));
-		shown += kept.length;
-		if (kept.length > 0) machines.push({ hostname: machineRows[0].label, vulnerabilities: kept });
+// The item as notifications describe it, with its current vulnerabilities and package flags.
+async function describeItem(itemType, itemID) {
+	if (itemType === 'machine') {
+		const [machine] = await database.query('SELECT hostname, osFamily FROM machines WHERE machineID = ?', [itemID]);
+		return { item: { kind: 'machine', name: machine.hostname, hostname: machine.hostname, osFamily: machine.osFamily }, vulnerabilities: await programVulnerabilities(itemID), packageFlags: new Map() };
 	}
-	machines.sort((left, right) => left.hostname.localeCompare(right.hostname));
-	return { organization: organization.name, total, shown, machines };
+	const [application] = await database.query('SELECT a.name, m.hostname, m.osFamily FROM applications a INNER JOIN machines m ON m.machineID = a.machineID WHERE a.applicationID = ?', [itemID]);
+	const packages = await database.query('SELECT ecosystem, name, version, direct, dev FROM application_dependency WHERE snapshotID = (SELECT MAX(snapshotID) FROM application_snapshot WHERE applicationID = ?)', [itemID]);
+	const packageFlags = new Map(packages.map(({ ecosystem, name, version, direct, dev }) => [`${ecosystem}|${name}|${version}`, { direct: Boolean(direct), dev: Boolean(dev) }]));
+	return { item: { kind: 'application', name: application.name, hostname: application.hostname, osFamily: application.osFamily }, vulnerabilities: await applicationVulnerabilities(itemID), packageFlags };
 }
 
-async function deliverEmail(organization, digest) {
+async function deliverEmail(organization, notification) {
 	const admins = await database.query('SELECT username FROM users WHERE orgID = ? AND role = ? AND isVerified = 1', [organization.orgID, 'admin']);
 	if (admins.length === 0) return false; // kept unsent until the organization has an admin
-	await sendAlertDigest(admins.map(({ username }) => username), digest);
+	await sendItemNotification(admins.map(({ username }) => username), notification);
 	return true;
 }
 
-// Deliver one channel of one organization: below-threshold or disabled alerts are marked handled
-// without a message; a failed delivery leaves the alerts unsent for the next tick.
-async function processChannel(organization, { column, enabled, deliver }) {
-	const rows = await unsentRows(organization.orgID, column);
-	if (!enabled) return markSent(rows, column).then(() => 0);
+async function deliverWebhook(organization, notification) {
+	await postWebhook(organization.alertWebhookKind, organization.alertWebhookUrl, renderChat(organization.alertWebhookKind, notification));
+	return true;
+}
 
-	const eligible = rows.filter(({ severity }) => meetsThreshold(severity, organization.alertMinSeverity));
-	await markSent(rows.filter(row => !eligible.includes(row)), column);
-	if (eligible.length === 0) return 0;
-
-	const digest = await buildDigest(organization, eligible);
-	if (digest.total > 0) {
+// One message for one item on one channel; its states are marked only once it is delivered.
+async function deliverItem(organization, { column, deliver }, rows) {
+	const { item, vulnerabilities, packageFlags } = await describeItem(rows[0].itemType, rows[0].itemID);
+	const wanted = new Set(rows.map(({ cveID }) => cveID));
+	const notification = buildItemNotification({
+		item: { ...item, organization: organization.name, minSeverity: organization.alertMinSeverity },
+		vulnerabilities: vulnerabilities.filter(({ cveID }) => wanted.has(cveID)),
+		packageFlags
+	});
+	if (notification.counts.total > 0) {
 		try {
-			if (!(await deliver(organization, digest))) return 0;
+			if (!(await deliver(organization, notification))) return 0;
 		} catch (error) {
-			logger.error({ err: error, orgID: organization.orgID, channel: column }, 'Alert delivery failed, retried next tick');
+			logger.error({ err: error, orgID: organization.orgID, channel: column, item: `${rows[0].itemType}:${rows[0].itemID}` }, 'Alert delivery failed, retried next tick');
 			return 0;
 		}
 	}
-	await markSent(eligible, column);
-	return digest.total;
+	await markSent(rows, column);
+	return notification.counts.total;
 }
 
-async function deliverWebhook(organization, digest) {
-	await postWebhook(organization.alertWebhookKind, organization.alertWebhookUrl, formatDigest(organization.alertWebhookKind, digest));
-	return true;
+// Deliver one channel of one organization, one message per item: below-threshold or disabled alerts
+// are marked handled without a message; a failed item stays unsent for the next tick, the others go.
+async function processChannel(organization, channel) {
+	const rows = await unsentRows(organization.orgID, channel.column);
+	if (!channel.enabled) return markSent(rows, channel.column).then(() => 0);
+
+	const eligible = rows.filter(({ severity }) => meetsThreshold(severity, organization.alertMinSeverity));
+	await markSent(rows.filter(row => !eligible.includes(row)), channel.column);
+
+	let delivered = 0;
+	for (const itemRows of Map.groupBy(eligible, ({ itemType, itemID }) => `${itemType}:${itemID}`).values()) {
+		delivered += await deliverItem(organization, channel, itemRows);
+	}
+	return delivered;
 }
 
 // Each channel keeps its own sent marker: a failing webhook never blocks or repeats the email.

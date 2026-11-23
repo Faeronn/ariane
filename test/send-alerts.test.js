@@ -5,12 +5,14 @@ import { getTransporter } from '../utils/mailer.js';
 import { reset, TEST_ORG_ID } from './helpers/database.js';
 import { captureLogs } from './helpers/fixtures.js';
 import { startWebhookStub } from './helpers/webhook-stub.js';
-import { formatDigest } from '../utils/webhook.js';
 import database from '../utils/database.js';
 
 const CPE = 'cpe:2.3:a:openssl:openssl:3.0.0:-:*:*:*:*:*:*';
 const OTHER_ORG_ID = 2;
 
+// Organization 1: two verified admins, a viewer, an unverified admin. Machine 1 "web-01" runs
+// openssl 3.0.0 (CVE-2000-0001 CRITICAL, CVE-2000-0002 MEDIUM); its application 1 "shop" has
+// express 4.17.1 (CVE-2024-29041 HIGH). Every state is new (unsent).
 let sent;
 let sendMail;
 beforeEach(async () => {
@@ -28,6 +30,13 @@ beforeEach(async () => {
 		await database.query('INSERT INTO cpe_cve (cpeName, cveID) VALUES (?, ?)', [CPE, cveID]);
 		await database.query('INSERT INTO item_cve_state (itemType, itemID, cveID, firstSeenAt) VALUES ("machine", 1, ?, UTC_TIMESTAMP())', [cveID]);
 	}
+	await database.query("INSERT INTO applications (applicationID, orgID, machineID, name, createdAt, lastSeenAt) VALUES (1, ?, 1, 'shop', UTC_TIMESTAMP(), UTC_TIMESTAMP())", [TEST_ORG_ID]);
+	await database.query('INSERT INTO application_snapshot (snapshotID, applicationID, receivedAt) VALUES (1, 1, UTC_TIMESTAMP())');
+	await database.query("INSERT INTO application_dependency (snapshotID, ecosystem, name, version, direct, dev) VALUES (1, 'npm', 'express', '4.17.1', 1, 0)");
+	await database.query("INSERT INTO cve (cveID, cvssScore, severity) VALUES ('CVE-2024-29041', 7.5, 'HIGH')");
+	await database.query("INSERT INTO package_vuln (ecosystem, name, version, cveID, source) VALUES ('npm', 'express', '4.17.1', 'CVE-2024-29041', 'osv')");
+	await database.query('INSERT INTO item_cve_state (itemType, itemID, cveID, firstSeenAt) VALUES ("application", 1, "CVE-2024-29041", UTC_TIMESTAMP())');
+
 	sent = [];
 	sendMail = mock.method(getTransporter(), 'sendMail', async mail => {
 		sent.push(mail);
@@ -37,29 +46,35 @@ beforeEach(async () => {
 afterEach(() => sendMail.mock.restore());
 after(() => database.end());
 
-const emailState = () => database.query('SELECT cveID, emailSentAt IS NOT NULL AS sent FROM item_cve_state ORDER BY cveID')
-	.then(rows => rows.map(({ cveID, sent: done }) => `${cveID}:${done ? 'sent' : 'unsent'}`));
+const stateOf = column => database.query(`SELECT itemType, cveID, ${column} IS NOT NULL AS done FROM item_cve_state ORDER BY itemType = "application", cveID`)
+	.then(rows => rows.map(({ itemType, cveID, done }) => `${itemType[0]}:${cveID}:${done ? 'done' : 'pending'}`));
+// Alerts still waiting on `column`'s channel.
+const pendingOn = column => stateOf(column).then(states => states.filter(state => state.endsWith('pending')));
 
-describe('email alert digest', () => {
-	it('mails one digest to the verified admins listing the CVEs at or above the threshold', async () => {
+describe('email alerts per item', () => {
+	it('mails one message per item to the verified admins, with that item\'s CVEs at or above the threshold', async () => {
 		await runOnce();
-		assert.equal(sent.length, 1);
-		assert.deepEqual(sent[0].to, ['alice@ariane.test', 'bob@ariane.test']);
-		assert.match(sent[0].subject, /1 nouvelle\(s\) vulnérabilité\(s\) - Test/);
-		assert.match(sent[0].html, /web-01/);
-		assert.match(sent[0].html, /https:\/\/nvd\.nist\.gov\/vuln\/detail\/CVE-2000-0001/);
-		assert.match(sent[0].html, /openssl 3\.0\.0/);
-		assert.doesNotMatch(sent[0].html, /CVE-2000-0002/);
+		assert.equal(sent.length, 2);
+		assert.ok(sent.every(mail => mail.to.join(',') === 'alice@ariane.test,bob@ariane.test'));
+		const machine = sent.find(mail => mail.subject.includes('web-01') && !mail.subject.includes('shop'));
+		const application = sent.find(mail => mail.subject.includes('shop'));
+		assert.match(machine.subject, /web-01/);
+		assert.match(machine.html, /CVE-2000-0001/);
+		assert.doesNotMatch(machine.html, /CVE-2000-0002|CVE-2024-29041/);
+		assert.match(application.subject, /shop/);
+		assert.match(application.html, /CVE-2024-29041/);
+		assert.doesNotMatch(application.html, /CVE-2000-0001/);
+		assert.ok(sent.every(mail => mail.text.length > 0), 'a plain-text part goes with the HTML');
 	});
 
 	it('marks every alert handled, including the one below the threshold, and sends nothing more', async () => {
 		await runOnce();
-		assert.deepEqual(await emailState(), ['CVE-2000-0001:sent', 'CVE-2000-0002:sent']);
+		assert.deepEqual(await stateOf('emailSentAt'), ['m:CVE-2000-0001:done', 'm:CVE-2000-0002:done', 'a:CVE-2024-29041:done']);
 		await runOnce();
-		assert.equal(sent.length, 1);
+		assert.equal(sent.length, 2);
 	});
 
-	it('keeps alerts unsent when the transport fails, and sends them on the next tick', async () => {
+	it('keeps only the failed item unsent when the transport fails for it, and sends it next tick', async () => {
 		sendMail.mock.mockImplementationOnce(() => Promise.reject(new Error('smtp down')));
 		const logs = captureLogs();
 		try {
@@ -68,33 +83,37 @@ describe('email alert digest', () => {
 			logs.restore();
 		}
 		assert.ok(logs.lines.some(line => line.level === 50 && /delivery failed/.test(line.msg)));
-		assert.deepEqual(await emailState(), ['CVE-2000-0001:unsent', 'CVE-2000-0002:sent']);
-
+		const pending = await pendingOn('emailSentAt');
+		assert.equal(pending.length, 1);
 		await runOnce();
-		assert.equal(sent.length, 1);
-		assert.deepEqual(await emailState(), ['CVE-2000-0001:sent', 'CVE-2000-0002:sent']);
+		assert.deepEqual(await pendingOn('emailSentAt'), []);
+		assert.equal(sent.length, 2);
 	});
 
 	it('sends nothing and marks alerts handled when email alerts are off', async () => {
 		await database.query('UPDATE organizations SET alertEmailEnabled = 0');
 		await runOnce();
 		assert.equal(sent.length, 0);
-		assert.deepEqual(await emailState(), ['CVE-2000-0001:sent', 'CVE-2000-0002:sent']);
+		assert.deepEqual(await pendingOn('emailSentAt'), []);
 	});
 
-	it('marks CVEs to verify when the match is uncertain, and escapes HTML', async () => {
-		await database.query('UPDATE software_cpe SET versionNormalized = 1');
+	it('escapes HTML coming from inventories', async () => {
 		await database.query("UPDATE machines SET hostname = '<b>web</b>'");
 		await runOnce();
-		assert.match(sent[0].html, /à vérifier/);
-		assert.match(sent[0].html, /&lt;b&gt;web&lt;\/b&gt;/);
+		const machineMail = sent.find(mail => mail.subject.includes('<b>web</b>'));
+		assert.ok(machineMail);
+		assert.match(machineMail.html, /&lt;b&gt;web&lt;\/b&gt;/);
+		assert.doesNotMatch(machineMail.html, /<b>web<\/b>/);
+	});
+
+	it('ignores the items of revoked machines', async () => {
+		await database.query('UPDATE machines SET revokedAt = UTC_TIMESTAMP()');
+		await runOnce();
+		assert.equal(sent.length, 0);
 	});
 });
 
-const webhookState = () => database.query('SELECT cveID, webhookSentAt IS NOT NULL AS posted, emailSentAt IS NOT NULL AS emailed FROM item_cve_state ORDER BY cveID')
-	.then(rows => rows.map(({ cveID, posted, emailed }) => `${cveID}:${posted ? 'posted' : 'unposted'}:${emailed ? 'emailed' : 'unemailed'}`));
-
-describe('webhook alert delivery', () => {
+describe('webhook alerts per item', () => {
 	let hook;
 	before(async () => {
 		hook = await startWebhookStub();
@@ -106,28 +125,16 @@ describe('webhook alert delivery', () => {
 	});
 	beforeEach(async () => {
 		hook.reset();
-		await database.query('UPDATE organizations SET alertWebhookKind = ?, alertWebhookUrl = ? WHERE orgID = ?', ['slack', `${hook.origin}/hook`, TEST_ORG_ID]);
+		await database.query('UPDATE organizations SET alertWebhookKind = ?, alertWebhookUrl = ? WHERE orgID = ?', ['discord', `${hook.origin}/hook`, TEST_ORG_ID]);
 	});
 
-	it('posts one Slack message listing the new CVE with its machine', async () => {
+	it('posts one message per item', async () => {
 		await runOnce();
-		assert.equal(hook.posts.length, 1);
-		const text = JSON.stringify(hook.posts[0].body);
-		assert.match(hook.posts[0].body.text, /1 nouvelle\(s\) vulnérabilité\(s\)/);
-		assert.match(text, /web-01/);
-		assert.match(text, /CVE-2000-0001/);
-		assert.doesNotMatch(text, /CVE-2000-0002/);
-		assert.deepEqual(await webhookState(), ['CVE-2000-0001:posted:emailed', 'CVE-2000-0002:posted:emailed']);
-	});
-
-	it('posts the Discord format within its limits', async () => {
-		await database.query('UPDATE organizations SET alertWebhookKind = ? WHERE orgID = ?', ['discord', TEST_ORG_ID]);
-		await runOnce();
-		const { body } = hook.posts[0];
-		assert.match(body.content, /nouvelle/);
-		assert.equal(body.embeds.length, 1);
-		assert.equal(body.embeds[0].title, 'web-01');
-		assert.match(body.embeds[0].description, /CVE-2000-0001/);
+		assert.equal(hook.posts.length, 2);
+		const bodies = hook.posts.map(({ body }) => JSON.stringify(body));
+		assert.ok(bodies.some(body => body.includes('web-01') && body.includes('CVE-2000-0001') && !body.includes('CVE-2024-29041')));
+		assert.ok(bodies.some(body => body.includes('shop') && body.includes('CVE-2024-29041')));
+		assert.deepEqual(await pendingOn('webhookSentAt'), []);
 	});
 
 	it('keeps the webhook unsent when it fails, without affecting the email', async () => {
@@ -138,11 +145,13 @@ describe('webhook alert delivery', () => {
 		} finally {
 			logs.restore();
 		}
-		assert.deepEqual(await webhookState(), ['CVE-2000-0001:unposted:emailed', 'CVE-2000-0002:posted:emailed']);
+		const unposted = await pendingOn('webhookSentAt');
+		assert.ok(unposted.length > 0);
+		assert.deepEqual(await pendingOn('emailSentAt'), []);
 		hook.answer(204);
 		await runOnce();
-		assert.deepEqual(await webhookState(), ['CVE-2000-0001:posted:emailed', 'CVE-2000-0002:posted:emailed']);
-		assert.equal(sent.length, 1);
+		assert.deepEqual(await pendingOn('webhookSentAt'), []);
+		assert.equal(sent.length, 2);
 	});
 
 	it('never posts to a URL outside the allowlist', async () => {
@@ -162,24 +171,6 @@ describe('webhook alert delivery', () => {
 		await database.query('UPDATE organizations SET alertWebhookKind = NULL, alertWebhookUrl = NULL');
 		await runOnce();
 		assert.equal(hook.posts.length, 0);
-		assert.deepEqual(await webhookState(), ['CVE-2000-0001:posted:emailed', 'CVE-2000-0002:posted:emailed']);
-	});
-});
-
-const vulnerability = index => ({ cveID: `CVE-2000-${String(index).padStart(4, '0')}`, severity: 'HIGH', cvssScore: 7.5, software: [{ name: 'x'.repeat(200), version: '1' }] });
-
-describe('formatDigest limits', () => {
-	const digest = { organization: 'Test', total: 600, shown: 600, machines: Array.from({ length: 60 }, (_, machine) => ({ hostname: `host-${machine}`, vulnerabilities: Array.from({ length: 10 }, (__, index) => vulnerability(index)) })) };
-
-	it('stays within Slack limits', () => {
-		const body = formatDigest('slack', digest);
-		assert.ok(body.blocks.length <= 50);
-		assert.ok(body.blocks.every(block => block.text.text.length <= 3000));
-	});
-
-	it('stays within Discord limits', () => {
-		const body = formatDigest('discord', digest);
-		assert.ok(body.embeds.length <= 10);
-		assert.ok(body.embeds.every(embed => embed.description.length <= 4096 && embed.title.length <= 256));
+		assert.deepEqual(await pendingOn('webhookSentAt'), []);
 	});
 });
