@@ -16,37 +16,57 @@ const OLD_SNAPSHOTS = `DELETE FROM inventory_snapshot WHERE snapshotID IN (
 		LIMIT ?
 	) AS old
 )`;
-// Then, in dependency order, what no machine references any more.
+// Same rule for application snapshots: never an application's latest one.
+const OLD_APPLICATION_SNAPSHOTS = `DELETE FROM application_snapshot WHERE snapshotID IN (
+	SELECT snapshotID FROM (
+		SELECT s.snapshotID FROM application_snapshot s
+		WHERE s.receivedAt < DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY)
+			AND s.snapshotID <> (SELECT MAX(latest.snapshotID) FROM application_snapshot latest WHERE latest.applicationID = s.applicationID)
+		LIMIT ?
+	) AS old
+)`;
+// Then, in dependency order, what no machine or application references any more.
 const ORPHAN_SOFTWARE_KEYS = `DELETE sc FROM software_cpe sc
 	LEFT JOIN installed_software s ON s.vendor = sc.vendor AND s.name = sc.name AND s.version = sc.version
 	WHERE s.softwareID IS NULL`;
 const ORPHAN_CPE_LINKS = `DELETE cc FROM cpe_cve cc
 	LEFT JOIN software_cpe sc ON sc.cpeName = cc.cpeName
 	WHERE sc.softwareCpeID IS NULL`;
+const ORPHAN_PACKAGE_KEYS = `DELETE k FROM package_vuln_key k
+	LEFT JOIN application_dependency d ON d.ecosystem = k.ecosystem AND d.name = k.name AND d.version = k.version
+	WHERE d.snapshotID IS NULL`;
+const ORPHAN_PACKAGE_LINKS = `DELETE pv FROM package_vuln pv
+	LEFT JOIN package_vuln_key k ON k.ecosystem = pv.ecosystem AND k.name = pv.name AND k.version = pv.version
+	WHERE k.status IS NULL`;
+// A vulnerability stays while a CPE or a package still links to it.
 const ORPHAN_CVES = `DELETE c FROM cve c
 	LEFT JOIN cpe_cve cc ON cc.cveID = c.cveID
-	WHERE cc.cveID IS NULL`;
+	LEFT JOIN package_vuln pv ON pv.cveID = c.cveID
+	WHERE cc.cveID IS NULL AND pv.cveID IS NULL`;
 
 async function deleted(sql) {
 	const result = await database.query(sql);
 	return result.affectedRows;
 }
 
-async function deleteOldSnapshots(retentionDays) {
+async function deleteOldSnapshots(sql, retentionDays) {
 	let deleted = 0;
 	for (;;) {
-		const result = await database.query(OLD_SNAPSHOTS, [retentionDays, BATCH_SIZE]);
+		const result = await database.query(sql, [retentionDays, BATCH_SIZE]);
 		deleted += result.affectedRows;
 		if (result.affectedRows < BATCH_SIZE) return deleted;
 	}
 }
 
 async function tick({ retentionDays = Number(process.env.SNAPSHOT_RETENTION_DAYS) || DEFAULT_RETENTION_DAYS } = {}) {
-	const snapshots = await deleteOldSnapshots(retentionDays); // installed_software cascades
+	const snapshots = await deleteOldSnapshots(OLD_SNAPSHOTS, retentionDays); // installed_software cascades
+	const applicationSnapshots = await deleteOldSnapshots(OLD_APPLICATION_SNAPSHOTS, retentionDays); // application_dependency cascades
 	const softwareKeys = await deleted(ORPHAN_SOFTWARE_KEYS);
 	const cpeLinks = await deleted(ORPHAN_CPE_LINKS);
+	const packageKeys = await deleted(ORPHAN_PACKAGE_KEYS);
+	const packageLinks = await deleted(ORPHAN_PACKAGE_LINKS);
 	const cves = await deleted(ORPHAN_CVES);
-	const summary = { snapshots, softwareKeys, cpeLinks, cves };
+	const summary = { snapshots, applicationSnapshots, softwareKeys, cpeLinks, packageKeys, packageLinks, cves };
 	logger.info(summary, 'Purge done');
 	return summary;
 }

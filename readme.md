@@ -104,6 +104,7 @@ Seules les URL de webhook Slack (`https://hooks.slack.com/services/…`) et Disc
 | POST    | /machines             | admin  | Enrôlement : renvoie `machineID` et la clé agent (affichée une seule fois) |
 | DELETE  | /machines/:id         | admin  | Révocation de la machine et de sa clé agent |
 | POST    | /agents/inventory     | agent  | Envoi snapshot machine (30 / h par machine) |
+| POST    | /agents/applications  | agent  | Envoi d’une application et de ses lockfiles (120 / h par machine) |
 | GET     | /machines             | membre | Liste des machines           |
 | GET     | /machines/:id         | membre | Détails machine              |
 | GET     | /machines/:id/vulns   | membre | Vulnérabilités détectées     |
@@ -125,6 +126,16 @@ Payload de `POST /agents/inventory` (5 Mo et 10 000 logiciels max ; `vendor` et 
 }
 ```
 Réponse `201 { "message": "Inventory received.", "snapshotID": 42 }`. Chaque envoi crée un snapshot ; l’état d’une machine est son dernier snapshot.
+
+Payload de `POST /agents/applications` : une application de la machine et ses lockfiles bruts, lus par Ariane (5 Mo et 20 000 paquets max). Fichiers acceptés : `package-lock.json` (npm 7+, lockfileVersion 2 ou 3), `composer.lock` (avec `composer.json` facultatif pour distinguer les dépendances directes), `uv.lock`. Le nom de fichier peut être un chemin, seul son nom compte.
+```json
+{
+  "name": "gesdoc2",
+  "path": "C:\dev\gesdoc2",
+  "lockfiles": [{ "filename": "package-lock.json", "content": "{ \"lockfileVersion\": 3, ... }" }]
+}
+```
+Réponse `201 { "message": "Application received.", "applicationID": 3, "snapshotID": 7, "packages": 832 }`. Une application est identifiée par son nom sur sa machine ; chaque envoi crée un snapshot de tous ses paquets (directs et transitifs, marqués `direct` et `dev`).
 
 Les logiciels reçus sont associés à un CPE puis à leurs CVE par des jobs NVD en tâche de fond (jamais pendant la requête). L’association procède dans cet ordre :
 1. **Alias** : les logiciels courants (navigateurs, 7-Zip, Notepad++, VLC, PuTTY, Python, Git…) sont reconnus par leur nom (`migrations/003-software-aliases.sql`) et cherchés directement par vendeur, produit et version. Si le dictionnaire NVD ne connaît pas encore cette version précise, un CPE est construit pour elle et ses CVE sont trouvées par les plages de versions vulnérables.

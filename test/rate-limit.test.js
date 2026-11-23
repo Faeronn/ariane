@@ -74,6 +74,17 @@ describe('agent and global rate limits', () => {
 		assert.equal(other.status, 201);
 	});
 
+	it('stops a machine after 120 application registrations per hour', async () => {
+		const { accessToken: token } = await createSignedInUser(server.baseUrl);
+		const { body: machine } = await api(server.baseUrl, 'POST', '/machines', { token, body: { hostname: 'apps-01' } });
+		// An empty body is refused (400) but still counted: the limit runs before validation.
+		const register = () => api(server.baseUrl, 'POST', '/agents/applications', { headers: { 'X-Agent-Key': machine.apiKey }, body: {} });
+		const answered = await statuses(120, register);
+		assert.ok(answered.every(status => status === 400));
+		const blocked = await register();
+		assert.equal(blocked.status, 429);
+	});
+
 	it('answers 429 on any route once an address passes the global ceiling', async () => {
 		const answered = await statuses(600, () => api(server.baseUrl, 'GET', '/nowhere'));
 		assert.ok(answered.every(status => status === 404));

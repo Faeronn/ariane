@@ -1,6 +1,7 @@
 import authenticateAgent from '../middleware/authenticate-agent.js';
 import { validateInventory } from '../utils/inventory.js';
-import { inventoryPerMachine } from '../middleware/rate-limit.js';
+import { validateApplication } from '../utils/application.js';
+import { inventoryPerMachine, applicationsPerMachine } from '../middleware/rate-limit.js';
 import database from '../utils/database.js';
 import express from 'express';
 const router = express.Router();
@@ -30,6 +31,36 @@ router.post('/inventory', inventoryPerMachine, async (request, response) => {
 	} catch (error) {
 		request.log.error(error);
 		return response.status(500).send({ message: 'Error : Unable to store inventory.' });
+	}
+});
+
+// Register one application of the calling machine with its lockfiles: a new snapshot of its exact
+// packages. Package keys new to Ariane wait as `pending` for the OSV job; the request never calls OSV.
+router.post('/applications', applicationsPerMachine, async (request, response) => {
+	const { errors, application } = validateApplication(request.body);
+	if (errors) return response.status(400).send({ message: 'Error : Invalid application.', errors });
+
+	const { machineID } = request.machine;
+	try {
+		const { applicationID, snapshotID } = await database.transaction(async connection => {
+			await connection.query(`INSERT INTO applications (orgID, machineID, name, path, createdAt, lastSeenAt)
+				SELECT orgID, machineID, ?, NULLIF(?, ''), UTC_TIMESTAMP(), UTC_TIMESTAMP() FROM machines WHERE machineID = ?
+				ON DUPLICATE KEY UPDATE path = VALUES(path), lastSeenAt = VALUES(lastSeenAt)`, [application.name, application.path ?? '', machineID]);
+			const [{ applicationID: id }] = await connection.query('SELECT applicationID FROM applications WHERE machineID = ? AND name = ?', [machineID, application.name]);
+			const snapshot = await connection.query('INSERT INTO application_snapshot (applicationID, receivedAt) VALUES (?, UTC_TIMESTAMP())', [id]);
+			const insertedID = Number(snapshot.insertId);
+			if (application.packages.length > 0) {
+				const rows = application.packages.map(({ ecosystem, name, version }) => [ecosystem, name, version]);
+				await connection.batch('INSERT INTO application_dependency (snapshotID, ecosystem, name, version, direct, dev) VALUES (?, ?, ?, ?, ?, ?)', application.packages.map(({ ecosystem, name, version, direct, dev }) => [insertedID, ecosystem, name, version, direct, dev]));
+				await connection.batch('INSERT IGNORE INTO package_vuln_key (ecosystem, name, version) VALUES (?, ?, ?)', rows);
+			}
+			return { applicationID: id, snapshotID: insertedID };
+		});
+
+		return response.status(201).send({ message: 'Application received.', applicationID, snapshotID, packages: application.packages.length });
+	} catch (error) {
+		request.log.error(error);
+		return response.status(500).send({ message: 'Error : Unable to store application.' });
 	}
 });
 

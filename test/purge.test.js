@@ -22,6 +22,18 @@ async function seed() {
 	}
 	for (const cveID of ['CVE-1', 'CVE-2', 'CVE-3', 'CVE-9']) await database.query('INSERT INTO cve (cveID) VALUES (?)', [cveID]);
 	for (const [cpe, cveID] of [['cpe:x', 'CVE-1'], ['cpe:y', 'CVE-2'], ['cpe:z', 'CVE-3']]) await database.query('INSERT INTO cpe_cve (cpeName, cveID) VALUES (?, ?)', [cpe, cveID]);
+
+	// Application of machine 1: a 200-day-old snapshot with old-pkg, the current one with cur-pkg.
+	await database.query("INSERT INTO applications (applicationID, orgID, machineID, name, createdAt, lastSeenAt) VALUES (1, ?, 1, 'app', UTC_TIMESTAMP(), UTC_TIMESTAMP())", [TEST_ORG_ID]);
+	for (const [snapshotID, days, name] of [[1, 200, 'old-pkg'], [2, 1, 'cur-pkg']]) {
+		await database.query('INSERT INTO application_snapshot (snapshotID, applicationID, receivedAt) VALUES (?, 1, DATE_SUB(UTC_TIMESTAMP(), INTERVAL ? DAY))', [snapshotID, days]);
+		await database.query("INSERT INTO application_dependency (snapshotID, ecosystem, name, version) VALUES (?, 'npm', ?, '1.0.0')", [snapshotID, name]);
+		await database.query("INSERT INTO package_vuln_key (ecosystem, name, version, status) VALUES ('npm', ?, '1.0.0', 'checked')", [name]);
+	}
+	for (const [name, cveID] of [['old-pkg', 'GHSA-old'], ['cur-pkg', 'GHSA-cur']]) {
+		await database.query('INSERT INTO cve (cveID) VALUES (?)', [cveID]);
+		await database.query("INSERT INTO package_vuln (ecosystem, name, version, cveID) VALUES ('npm', ?, '1.0.0', ?)", [name, cveID]);
+	}
 }
 
 after(() => database.end());
@@ -43,9 +55,15 @@ describe('purge', () => {
 		assert.deepEqual(ids(await database.query('SELECT cpeName FROM cpe_cve ORDER BY 1')), ['cpe:y', 'cpe:z']);
 	});
 
-	it('deletes CVEs no link references', async () => {
-		assert.deepEqual(ids(await database.query('SELECT cveID FROM cve ORDER BY 1')), ['CVE-2', 'CVE-3']);
-		assert.deepEqual(summary, { snapshots: 2, softwareKeys: 1, cpeLinks: 1, cves: 2 });
+	it('deletes old application snapshots but never an application latest one, then their orphan packages', async () => {
+		assert.deepEqual(ids(await database.query('SELECT snapshotID FROM application_snapshot')), [2]);
+		assert.deepEqual(ids(await database.query('SELECT name FROM package_vuln_key')), ['cur-pkg']);
+		assert.deepEqual(ids(await database.query('SELECT cveID FROM package_vuln')), ['GHSA-cur']);
+	});
+
+	it('deletes vulnerabilities neither a CPE nor a package links to', async () => {
+		assert.deepEqual(ids(await database.query('SELECT cveID FROM cve ORDER BY 1')), ['CVE-2', 'CVE-3', 'GHSA-cur']);
+		assert.deepEqual(summary, { snapshots: 2, applicationSnapshots: 1, softwareKeys: 1, cpeLinks: 1, packageKeys: 1, packageLinks: 1, cves: 3 });
 	});
 
 	it('never runs while another instance holds the purge lock', async () => {
